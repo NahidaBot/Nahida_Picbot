@@ -1,5 +1,7 @@
 # Nahida_Picbot
 
+一个 Telegram 发图机器人, 接收 Pixiv 链接, 发送图片到频道, 并发送原图到关联的评论区。
+
 目前作为 [@gongzhutonghao](https://t.me/gongzhutonghao) 的发图机器人。
 
 
