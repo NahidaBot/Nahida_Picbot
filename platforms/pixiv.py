@@ -1,11 +1,12 @@
 from pixivpy3 import *
 from config import config
-from entities import Image, ImageTag
+from entities import Image
 from telegram import User, ext, constants
 from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
 from db import session
 from sqlalchemy import func
+import bot
 import logging, telegram
 
 api = AppPixivAPI()
@@ -16,7 +17,7 @@ api.auth(refresh_token=config.pixiv_refresh_token)
 
 
 async def getArtworks(
-    url: str, tags: list, user: User, content: ContextTypes.DEFAULT_TYPE
+    url: str, tags: list, user: User, context: ContextTypes.DEFAULT_TYPE
 ) -> str:
     pid = url.strip("/").split("/")[-1]  # 取 PID
 
@@ -72,7 +73,7 @@ async def getArtworks(
 Tags: {" ".join(tags)}
 {config.txt_msg_tail}
 """
-    sent_msg = None
+    reply_msg = None
     if page_count > 1:
         media_group = []
         for i in range(page_count):
@@ -91,9 +92,10 @@ Tags: {" ".join(tags)}
                         images[i].thumburl, has_spoiler=True if images[i].r18 else False
                     )
                 )
-        sent_msg = await content.bot.send_media_group(config.bot_channel, media_group)
+        reply_msg = await context.bot.send_media_group(config.bot_channel, media_group)
+        reply_msg = reply_msg[0]
     else:
-        sent_msg = await content.bot.send_photo(
+        reply_msg = await context.bot.send_photo(
             config.bot_channel,
             images[0].thumburl,
             caption,
@@ -101,14 +103,10 @@ Tags: {" ".join(tags)}
             has_spoiler=True if images[i].r18 else False,
         )
 
-    if sent_msg:
-        if page_count > 1:
-            media_group = []
-            for i in range(page_count):
-                media_group.append(telegram.InputMediaDocument(images[i].rawurl))
-            sent_msg = await sent_msg.reply_media_group(media_group)
-        else:
-            sent_msg = await sent_msg.reply_document(images[0].rawurl)
+    if reply_msg:
+        context.bot_data[reply_msg.id] = images
+    print("\n\n"+str(context.bot_data[reply_msg.id])+"\n\n")
+
     msg += f"\n发送成功！"
     return msg
 
@@ -126,8 +124,8 @@ async def getArtworksWidthHeight(pid: int) -> list | None:
             cookies=cookies,
             headers=headers,
         )
-        logging.log(logging.INFO, response.content)
-        return json.loads(response.content)["body"]
+        logging.log(logging.INFO, response.context)
+        return json.loads(response.context)["body"]
     except Exception as e:
         logging.log(logging.ERROR, e)
     return None
