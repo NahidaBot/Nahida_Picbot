@@ -52,7 +52,7 @@ async def post(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await msg.reply_text("请求失败! 只支持在指定的对话中发布")
         return
 
-    post_msg = msg.text.replace("/post", "").strip()  # 处理原始命令
+    post_msg = msg.text.replace("/post", "").replace(f"@{context.bot.username}","").strip()  # 处理原始命令
 
     user = msg.from_user
 
