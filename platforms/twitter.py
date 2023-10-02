@@ -7,5 +7,8 @@ from db import session
 from sqlalchemy import func
 import logging, telegram
 
-async def getArtworks(url: str, tags: list, user: User, content: ContextTypes.DEFAULT_TYPE) -> str:
+
+async def getArtworks(
+    url: str, tags: list, user: User, content: ContextTypes.DEFAULT_TYPE
+) -> str:
     pass

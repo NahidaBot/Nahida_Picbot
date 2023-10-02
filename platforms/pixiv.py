@@ -15,7 +15,9 @@ api.auth(refresh_token=config.pixiv_refresh_token)
 # TODO 注意，ImageTags尚未启用
 
 
-async def getArtworks(url: str, tags: list, user: User, content: ContextTypes.DEFAULT_TYPE) -> str:
+async def getArtworks(
+    url: str, tags: list, user: User, content: ContextTypes.DEFAULT_TYPE
+) -> str:
     pid = url.strip("/").split("/")[-1]  # 取 PID
 
     illust = api.illust_detail(pid)["illust"]
@@ -47,8 +49,12 @@ async def getArtworks(url: str, tags: list, user: User, content: ContextTypes.DE
             author=illust["user"]["name"],
             authorid=illust["user"]["id"],
             r18=True if illust["x_restrict"] == 1 else False,
-            rawurl = meta_pages[i]["image_urls"]["original"] if page_count > 1 else illust["meta_single_page"]["original_image_url"],
-            thumburl = meta_pages[i]["image_urls"]["large"] if page_count > 1 else illust["image_urls"]["large"],
+            rawurl=meta_pages[i]["image_urls"]["original"]
+            if page_count > 1
+            else illust["meta_single_page"]["original_image_url"],
+            thumburl=meta_pages[i]["image_urls"]["large"]
+            if page_count > 1
+            else illust["image_urls"]["large"],
         )
         if image_width_height_info:
             img.width = image_width_height_info[i]["width"]
@@ -61,28 +67,45 @@ async def getArtworks(url: str, tags: list, user: User, content: ContextTypes.DE
 
     from utils.escaper import html_esc
 
-    caption = f'''<b>{html_esc(images[0].title)}</b>
+    caption = f"""<b>{html_esc(images[0].title)}</b>
 <a href="https://pixiv.net/artworks/{pid}">Source</a> by <a href="https://pixiv.net/users/{images[0].authorid}">Pixiv @{html_esc(images[0].author)}</a>
 Tags: {" ".join(tags)}
 {config.txt_msg_tail}
-'''
+"""
     sent_msg = None
     if page_count > 1:
         media_group = []
         for i in range(page_count):
             if i == 0:
-                media_group.append(telegram.InputMediaPhoto(images[i].thumburl, caption, parse_mode=ParseMode.HTML, has_spoiler=True if images[i].r18 else False))
+                media_group.append(
+                    telegram.InputMediaPhoto(
+                        images[i].thumburl,
+                        caption,
+                        parse_mode=ParseMode.HTML,
+                        has_spoiler=True if images[i].r18 else False,
+                    )
+                )
             else:
-                media_group.append(telegram.InputMediaPhoto(images[i].thumburl, has_spoiler=True if images[i].r18 else False))
+                media_group.append(
+                    telegram.InputMediaPhoto(
+                        images[i].thumburl, has_spoiler=True if images[i].r18 else False
+                    )
+                )
         sent_msg = await content.bot.send_media_group(config.bot_channel, media_group)
     else:
-        sent_msg = await content.bot.send_photo(config.bot_channel, images[0].thumburl, caption, parse_mode=ParseMode.HTML, has_spoiler=True if images[i].r18 else False)
+        sent_msg = await content.bot.send_photo(
+            config.bot_channel,
+            images[0].thumburl,
+            caption,
+            parse_mode=ParseMode.HTML,
+            has_spoiler=True if images[i].r18 else False,
+        )
 
     if sent_msg:
         if page_count > 1:
             media_group = []
             for i in range(page_count):
-                    media_group.append(telegram.InputMediaDocument(images[i].rawurl))
+                media_group.append(telegram.InputMediaDocument(images[i].rawurl))
             sent_msg = await sent_msg.reply_media_group(media_group)
         else:
             sent_msg = await sent_msg.reply_document(images[0].rawurl)
