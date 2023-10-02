@@ -69,7 +69,7 @@ async def getArtworks(
     from utils.escaper import html_esc
 
     caption = f"""<b>{html_esc(images[0].title)}</b>
-<a href="https://pixiv.net/artworks/{pid}">Source</a> by <a href="https://pixiv.net/users/{images[0].authorid}">Pixiv @{html_esc(images[0].author)}</a>
+<a href="https://www.pixiv.net/artworks/{pid}">Source</a> by <a href="https://www.pixiv.net/users/{images[0].authorid}">Pixiv @{html_esc(images[0].author)}</a>
 Tags: {" ".join(tags)}
 {config.txt_msg_tail}
 """
