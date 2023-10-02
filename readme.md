@@ -5,7 +5,7 @@
 
 ## 食用方式
 
-1. `clone` 本项目。（如果需要 Personal access tokens, 点这里: https://github.com/settings/tokens）
+1. `clone` 本项目
 2. `pip install -r requirements.txt` 
 3. 复制 `.env.example`, 并改名为 `.env`, 填入所有配置
 
