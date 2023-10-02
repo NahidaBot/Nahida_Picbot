@@ -48,7 +48,7 @@ async def post(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     msg = update.message
     logging.info(msg.text)
 
-    if msg.chat.id not in config.bot_adminGroup:
+    if msg.chat.id not in config.bot_admin_chats:
         await msg.reply_text("请求失败! 只支持在指定的对话中发布")
         return
 

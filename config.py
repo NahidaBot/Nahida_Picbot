@@ -3,7 +3,7 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     bot_token: str
-    bot_adminGroup: list
+    bot_admin_chats: list
     bot_channel: str
     bot_channel_comment_group: int
     bot_deduplication_mode: bool
