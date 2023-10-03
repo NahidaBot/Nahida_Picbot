@@ -62,14 +62,10 @@ async def post(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     post_url = splited_msg[0]
     tags = splited_msg[1:]
 
-    if len(tags) < 1:
-        await msg.reply_text("请添加tag")
-        return
-
     if ("pixiv.net/artworks/" in post_msg) or re.match(r"[1-9]\d*", post_msg):
         # print("pixiv")
         await msg.reply_text("正在获取 Pixiv 图片...")
-        result = await pixiv.getArtworks(post_url, tags, user, context)
+        result = await pixiv.get_artworks(post_url, tags, user, context)
         await msg.reply_text(result, ParseMode.HTML)
     elif "twitter" in post_msg:
         print("twitter")

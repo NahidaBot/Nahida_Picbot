@@ -31,12 +31,11 @@ class Image(Base):
     height: int = Column(Integer)
 
 
-# TODO 想个办法自动化生成tag
-# class ImageTag(Base):
-#     __tablename__ = "imagetags"
-#     id = Column(Integer, primary_key=True)
-#     image_id = Column(Integer, ForeignKey("images.id"))
-#     tag = Column(String)
+class ImageTag(Base):
+    __tablename__ = "imagetags"
+    id: int = Column(Integer, primary_key=True)
+    pid: int = Column(String)
+    tag = Column(String)
 
 
 Base.metadata.create_all(engine)
