@@ -9,7 +9,6 @@ from sqlalchemy import func
 import logging, telegram
 from retry import retry
 import os
-from pathlib import Path
 
 if not os.path.exists("./Pixiv/"):
     os.mkdir("./Pixiv/")
@@ -22,10 +21,13 @@ logger = logging.getLogger(__name__)
 
 # TODO 注意，ImageTags尚未启用
 
+
 def refresh_token() -> None:
     api.auth(refresh_token=config.pixiv_refresh_token)
     from time import sleep
+
     sleep(1)
+
 
 @retry(tries=3)
 def get_illust(pid: int | str) -> None:
@@ -48,7 +50,6 @@ async def get_artworks(
     translated_tags = await get_translated_tags(illust["tags"])
     page_count = illust["page_count"]
 
-
     existing_image = session.query(Image).filter_by(pid=pid).first()
     if config.bot_deduplication_mode and existing_image:
         logger.warning("试图发送重复的图片: Pixiv" + pid)
@@ -66,7 +67,6 @@ async def get_artworks(
     for tag in translated_tags:
         image_tag = ImageTag(pid=pid, tag=tag)
         session.add(image_tag)
-
 
     for i in range(page_count):
         img = Image(
@@ -109,23 +109,25 @@ async def get_artworks(
             file_path = f"./Pixiv/{images[i].rawurl.split('/')[-1]}"
             logger.debug(file_path)
             file_size = os.path.getsize(file_path)
-            if file_size >= (1024*1024*10-1024):
+            if file_size >= (1024 * 1024 * 10 - 1024):
                 file_path = images[i].thumburl
-            if i == 0:
-                media_group.append(
-                    telegram.InputMediaPhoto(
-                    Path(file_path),
-                        caption,
-                        parse_mode=ParseMode.HTML,
-                        has_spoiler=True if images[i].r18 else False,
+            with open(file_path, "rb") as f:
+                if i == 0:
+                    media_group.append(
+                        telegram.InputMediaPhoto(
+                            f,
+                            caption,
+                            parse_mode=ParseMode.HTML,
+                            has_spoiler=True if images[i].r18 else False,
+                        )
                     )
-                )
-            else:
-                media_group.append(
-                    telegram.InputMediaPhoto(
-                        file_path, has_spoiler=True if images[i].r18 else False
+                else:
+                    media_group.append(
+                        telegram.InputMediaPhoto(
+                            f,
+                            has_spoiler=True if images[i].r18 else False,
+                        )
                     )
-                )
         logger.debug(media_group)
         reply_msg = await context.bot.send_media_group(config.bot_channel, media_group)
         reply_msg = reply_msg[0]
@@ -133,16 +135,17 @@ async def get_artworks(
         file_path = f"./Pixiv/{images[0].rawurl.split('/')[-1]}"
         logger.debug(file_path)
         file_size = os.path.getsize(file_path)
-        if file_size >= (1024*1024*10-1024):
+        if file_size >= (1024 * 1024 * 10 - 1024):
             file_path = images[0].thumburl
         logger.debug(images[0])
-        reply_msg = await context.bot.send_photo(
-            config.bot_channel,
-            Path(file_path),
-            caption,
-            parse_mode=ParseMode.HTML,
-            has_spoiler=True if images[i].r18 else False,
-        )
+        with open(file_path, "rb") as f:
+            reply_msg = await context.bot.send_photo(
+                config.bot_channel,
+                f,
+                caption,
+                parse_mode=ParseMode.HTML,
+                has_spoiler=True if images[i].r18 else False,
+            )
 
     if reply_msg:
         context.bot_data[reply_msg.id] = images
@@ -165,8 +168,8 @@ async def get_artworks_width_height(pid: int) -> list | None:
             cookies=cookies,
             headers=headers,
         )
-        logger.info(response.context)
-        return json.loads(response.context)["body"]
+        logger.info(response.content)
+        return json.loads(response.content)["body"]
     except Exception as e:
         logger.error("在请求Pixiv Web API的时候发生了一个错误")
         logger.error(e)
@@ -185,6 +188,7 @@ async def get_translated_tags(tags: list[dict[str, str]]) -> list[str]:
     use_origin_tag = True
     translated_tags = []
     import re
+
     for tag in tags:
         if tag["translated_name"]:
             use_origin_tag = False
@@ -192,8 +196,10 @@ async def get_translated_tags(tags: list[dict[str, str]]) -> list[str]:
                 if re.match(CHINESE_REGEXP, tag["name"]):
                     use_origin_tag = True
         ptn = r"""[!"$%&'()*+,-./:;<=>?@[\]^`{|}~．！？｡。＂＃＄％＆＇（）＊＋，－／：；＜＝＞＠［＼］＾＿｀｛｜｝～｟｠｢｣､　、〃〈〉《》「」『』【】〔〕〖〗〘〙〚〛〜〝〞〟〰〾〿–—‘’‛“”„‟…‧﹏﹑﹔·]"""
-        tag = (tag["name"] if use_origin_tag else tag["translated_name"]).replace(" ", "_")
-        tag = re.sub(ptn, '', tag)
-        translated_tags.append('#'+tag)
+        tag = (tag["name"] if use_origin_tag else tag["translated_name"]).replace(
+            " ", "_"
+        )
+        tag = re.sub(ptn, "", tag)
+        translated_tags.append("#" + tag)
     logger.debug(translated_tags)
     return translated_tags
