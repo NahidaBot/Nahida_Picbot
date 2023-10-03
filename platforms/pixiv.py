@@ -15,17 +15,17 @@ api.auth(refresh_token=config.pixiv_refresh_token)
 
 # TODO 注意，ImageTags尚未启用
 
-async def refresh_token() -> None:
+def refresh_token() -> None:
     api.auth(refresh_token=config.pixiv_refresh_token)
     from time import sleep
     sleep(1)
 
 @retry(tries=3)
-async def getIllust(pid: int | str) -> None:
+def getIllust(pid: int | str) -> None:
     try:
         illust = api.illust_detail(pid)["illust"]
+        return illust
     except Exception as e:
-        logging.log(logging.ERROR, e)
         logging.log(logging.ERROR, "获取失败，可能是Pixiv_refresh_token过期，正在尝试刷新")
         refresh_token()
         raise e
