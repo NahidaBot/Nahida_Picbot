@@ -3,7 +3,7 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 from config import config
 
 # 创建数据库引擎
-engine = create_engine(config.db_url, echo=True)
+engine = create_engine(config.db_url, echo=False)
 
 
 # 创建一个会话工厂
