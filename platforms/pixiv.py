@@ -6,8 +6,8 @@ from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
 from db import session
 from sqlalchemy import func
-import bot
 import logging, telegram
+from retry import retry
 
 api = AppPixivAPI()
 api.set_accept_language("zh-cn")
@@ -15,22 +15,28 @@ api.auth(refresh_token=config.pixiv_refresh_token)
 
 # TODO 注意，ImageTags尚未启用
 
+async def refresh_token() -> None:
+    api.auth(refresh_token=config.pixiv_refresh_token)
+    from time import sleep
+    sleep(1)
+
+@retry(tries=3)
+async def getIllust(pid: int | str) -> None:
+    try:
+        illust = api.illust_detail(pid)["illust"]
+    except Exception as e:
+        logging.log(logging.ERROR, e)
+        logging.log(logging.ERROR, "获取失败，可能是Pixiv_refresh_token过期，正在尝试刷新")
+        refresh_token()
+        raise e
+
 
 async def getArtworks(
     url: str, tags: list, user: User, context: ContextTypes.DEFAULT_TYPE
 ) -> str:
     pid = url.strip("/").split("/")[-1]  # 取 PID
 
-    try_count = 0
-    try:
-        illust = api.illust_detail(pid)["illust"]
-    except Exception as e:
-        logging.log(logging.ERROR, e)
-        logging.log(logging.ERROR, "获取失败，可能是Pixiv_refresh_token过期，正在尝试刷新")
-        api.auth(refresh_token=config.pixiv_refresh_token)
-        from time import sleep
-        sleep(1)
-        illust = api.illust_detail(pid)["illust"]
+    illust = getIllust(pid)
 
     id = illust["id"]
     page_count = illust["page_count"]
