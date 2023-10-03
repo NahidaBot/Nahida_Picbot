@@ -21,9 +21,20 @@ async def getArtworks(
 ) -> str:
     pid = url.strip("/").split("/")[-1]  # 取 PID
 
-    illust = api.illust_detail(pid)["illust"]
+    try_count = 0
+    try:
+        illust = api.illust_detail(pid)["illust"]
+    except Exception as e:
+        logging.log(logging.ERROR, e)
+        logging.log(logging.ERROR, "获取失败，可能是Pixiv_refresh_token过期，正在尝试刷新")
+        api.auth(refresh_token=config.pixiv_refresh_token)
+        from time import sleep
+        sleep(1)
+        illust = api.illust_detail(pid)["illust"]
+
     id = illust["id"]
     page_count = illust["page_count"]
+
 
     existing_image = session.query(Image).filter_by(pid=id).first()
     if config.bot_deduplication_mode and existing_image:
