@@ -8,6 +8,10 @@ from db import session
 from sqlalchemy import func
 import logging, telegram
 from retry import retry
+import os
+
+if not os.path.exists("./Pixiv/"):
+    os.mkdir("./Pixiv/")
 
 api = AppPixivAPI()
 api.set_accept_language("zh-cn")
@@ -94,10 +98,14 @@ Tags: {" ".join(tags)}
     if page_count > 1:
         media_group = []
         for i in range(page_count):
+            file_path = f"./Pixiv/{images[i].rawurl.split('/')[-1]}"
+            file_size = os.path.getsize(file_path)
+            if file_size >= (1024*1024*10-1024):
+                file_path = images[i].thumburl
             if i == 0:
                 media_group.append(
                     telegram.InputMediaPhoto(
-                        images[i].thumburl,
+                        file_path,
                         caption,
                         parse_mode=ParseMode.HTML,
                         has_spoiler=True if images[i].r18 else False,
@@ -106,16 +114,20 @@ Tags: {" ".join(tags)}
             else:
                 media_group.append(
                     telegram.InputMediaPhoto(
-                        images[i].thumburl, has_spoiler=True if images[i].r18 else False
+                        file_path, has_spoiler=True if images[i].r18 else False
                     )
                 )
             session.add(images[i])
         reply_msg = await context.bot.send_media_group(config.bot_channel, media_group)
         reply_msg = reply_msg[0]
     else:
+        file_path = f"./Pixiv/{images[0].rawurl.split('/')[-1]}"
+        file_size = os.path.getsize(file_path)
+        if file_size >= (1024*1024*10-1024):
+            file_path = images[0].thumburl
         reply_msg = await context.bot.send_photo(
             config.bot_channel,
-            images[0].thumburl,
+            file_path,
             caption,
             parse_mode=ParseMode.HTML,
             has_spoiler=True if images[i].r18 else False,
@@ -140,7 +152,7 @@ async def getArtworksWidthHeight(pid: int) -> list | None:
     }
     try:
         response = requests.get(
-            "https://www.pixiv.net/ajax/illust/112213666/pages",
+            f"https://www.pixiv.net/ajax/illust/{pid}/pages",
             cookies=cookies,
             headers=headers,
         )

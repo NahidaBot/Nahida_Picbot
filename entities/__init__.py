@@ -14,21 +14,21 @@ from datetime import datetime
 
 class Image(Base):
     __tablename__ = "images"
-    id = Column(Integer, primary_key=True)
-    userid = Column(Integer)
-    username = Column(String)
-    create_time = Column(DateTime, default=datetime.now)
-    platform = Column(String)
-    title = Column(String)
-    page = Column(Integer)
-    author = Column(String)
-    authorid = Column(Integer)
-    pid = Column(String)  # 对于 twitter，是 tweet id
-    rawurl = Column(String)
-    thumburl = Column(String)
-    r18 = Column(Boolean)
-    width = Column(Integer)
-    height = Column(Integer)
+    id: int = Column(Integer, primary_key=True)
+    userid: int = Column(Integer)
+    username: str = Column(String)
+    create_time: datetime = Column(DateTime, default=datetime.now)
+    platform: str = Column(String)
+    title: str = Column(String)
+    page: int = Column(Integer)
+    author: str = Column(String)
+    authorid: int = Column(Integer)
+    pid: int = Column(String)  # 对于 twitter，是 tweet id
+    rawurl: str = Column(String)
+    thumburl: str = Column(String)
+    r18: bool = Column(Boolean)
+    width: int = Column(Integer)
+    height: int = Column(Integer)
 
 
 # TODO 想个办法自动化生成tag
