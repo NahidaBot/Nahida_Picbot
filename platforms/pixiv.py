@@ -62,9 +62,7 @@ async def getArtworks(
             img.height = image_width_height_info[i]["height"]
             msg += f"第{i+1}张图片：{img.width}x{img.height}\n"
         images.append(img)
-        session.add(img)
         api.download(img.rawurl, path="./Pixiv/")
-    session.commit()
 
     from utils.escaper import html_esc
 
@@ -92,6 +90,7 @@ Tags: {" ".join(tags)}
                         images[i].thumburl, has_spoiler=True if images[i].r18 else False
                     )
                 )
+            session.add(images[i])
         reply_msg = await context.bot.send_media_group(config.bot_channel, media_group)
         reply_msg = reply_msg[0]
     else:
@@ -102,10 +101,12 @@ Tags: {" ".join(tags)}
             parse_mode=ParseMode.HTML,
             has_spoiler=True if images[i].r18 else False,
         )
+        session.add(images[0])
+    session.commit()
 
     if reply_msg:
         context.bot_data[reply_msg.id] = images
-    print("\n\n"+str(context.bot_data[reply_msg.id])+"\n\n")
+    logging.log(logging.INFO, str(context.bot_data[reply_msg.id]))
 
     msg += f"\n发送成功！"
     return msg
