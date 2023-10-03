@@ -2,6 +2,8 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
+    debug: bool
+
     bot_token: str
     bot_admin_chats: list
     bot_channel: str

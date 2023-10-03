@@ -13,6 +13,8 @@ api = AppPixivAPI()
 api.set_accept_language("zh-cn")
 api.auth(refresh_token=config.pixiv_refresh_token)
 
+logger = logging.getLogger(__name__)
+
 # TODO 注意，ImageTags尚未启用
 
 def refresh_token() -> None:
@@ -26,7 +28,7 @@ def getIllust(pid: int | str) -> None:
         illust = api.illust_detail(pid)["illust"]
         return illust
     except Exception as e:
-        logging.log(logging.ERROR, "获取失败，可能是Pixiv_refresh_token过期，正在尝试刷新")
+        logger.error("获取失败，可能是Pixiv_refresh_token过期，正在尝试刷新")
         refresh_token()
         raise e
 
@@ -44,7 +46,7 @@ async def getArtworks(
 
     existing_image = session.query(Image).filter_by(pid=id).first()
     if config.bot_deduplication_mode and existing_image:
-        logging.log(logging.WARNING, "试图发送重复的图片: Pixiv" + str(id))
+        logger.warning("试图发送重复的图片: Pixiv" + str(id))
         return f"该图片已经由 @{existing_image.username} 于 {str(existing_image.create_time)[:-7]} 发过"
 
     meta_pages = illust["meta_pages"]
@@ -123,7 +125,7 @@ Tags: {" ".join(tags)}
 
     if reply_msg:
         context.bot_data[reply_msg.id] = images
-    logging.log(logging.INFO, str(context.bot_data[reply_msg.id]))
+    logger.info(str(context.bot_data[reply_msg.id]))
 
     msg += f"\n发送成功！"
     return msg
@@ -142,8 +144,9 @@ async def getArtworksWidthHeight(pid: int) -> list | None:
             cookies=cookies,
             headers=headers,
         )
-        logging.log(logging.INFO, response.context)
+        logger.info(response.content)
         return json.loads(response.context)["body"]
     except Exception as e:
-        logging.log(logging.ERROR, e)
+        logger.error("在请求Pixiv Web API的时候发生了一个错误")
+        logger.error(e)
     return None
