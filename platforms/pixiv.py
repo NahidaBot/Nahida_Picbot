@@ -154,10 +154,10 @@ async def get_translated_tags(tags: list[dict[str, str]]) -> list[str]:
             if tag["translated_name"].isascii():
                 if re.match(CHINESE_REGEXP, tag["name"]):
                     use_origin_tag = True
-        tag = (tag["name"] if use_origin_tag else tag["translated_name"]).replace(
-            " ", "_"
-        )
-        tag = re.sub(PUNCTUATION_PATTERN, "", tag)
-        translated_tags.append("#" + tag)
+        tag = tag["name"] if use_origin_tag else tag["translated_name"]
+        if tag:
+            tag = (tag).replace(" ", "_")
+            tag = re.sub(PUNCTUATION_PATTERN, "", tag)
+            translated_tags.append("#" + tag)
     logger.debug(translated_tags)
     return translated_tags
