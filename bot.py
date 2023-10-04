@@ -91,23 +91,21 @@ async def post(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 async def send_media_group(
     msg: str, caption: str, images: list[Image], platform: str
 ) -> str:
-    page_count = len(images)
-
     reply_msg = None
     media_group = []
-    for i in range(page_count):
-        file_path = f"./{platform}/{images[i].filename}"
-        if images[i].size >= MAX_FILE_SIZE:
+    for image in images:
+        file_path = f"./{platform}/{image.filename}"
+        if image.size >= MAX_FILE_SIZE:
             media_group.append(
                 telegram.InputMediaPhoto(
-                    images[i].thumburl, has_spoiler=True if images[i].r18 else False
+                    image.thumburl, has_spoiler=True if image.r18 else False
                 )
             )
         else:
             with open(file_path, "rb") as f:
                 media_group.append(
                     telegram.InputMediaPhoto(
-                        f, has_spoiler=True if images[i].r18 else False
+                        f, has_spoiler=True if image.r18 else False
                     )
                 )
     logger.debug(media_group)
@@ -131,8 +129,8 @@ async def post_original_pic(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     if msg.forward_from_message_id in context.bot_data:
         images: list[Image] = context.bot_data.pop(msg.forward_from_message_id)
         media_group = []
-        for i in range(len(images)):
-            file_path = f"./{images[i].platform}/{images[i].filename}"
+        for image in images:
+            file_path = f"./{image.platform}/{image.filename}"
             with open(file_path, "rb") as f:
                 media_group.append(telegram.InputMediaDocument(f))
         await msg.reply_media_group(media=media_group)
