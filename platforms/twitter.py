@@ -59,10 +59,10 @@ async def get_artworks(
     author = tweet_info["author"]
     tweet_content = tweet_info["content"]
 
-    HASHTAG_PATTERN = r'''#[^ !@#$%^&*(),.?":{}|<>]+'''
+    HASHTAG_PATTERN = r'''#[^\s!@#$%^&*(),.?":{}|<>]+'''
     tags = re.findall(HASHTAG_PATTERN, tweet_content)
-    HASHTAG_PATTERN_SPACE = r'''(?:\s)?#[^ !@#$%^&*(),.?":{}|<>]+(?:\s)?'''
-    tweet_content = re.sub(HASHTAG_PATTERN_SPACE, "", tweet_content).strip()
+    HASHTAG_PATTERN_SPACE = r'''(?:\s)?#[^\s!@#$%^&*(),.?":{}|<>]+(?:\s)?'''
+    tweet_content = re.sub(HASHTAG_PATTERN_SPACE, "", tweet_content)
 
     tags = set(tags+input_tags)
 
