@@ -21,9 +21,12 @@ class Image(Base):
     platform: str = Column(String)
     title: str = Column(String)
     page: int = Column(Integer)
+    size: int = Column(Integer)
+    filename: str = Column(String)
     author: str = Column(String)
     authorid: int = Column(Integer)
     pid: int = Column(String)  # 对于 twitter，是 tweet id
+    extension: str = Column(String)  # 扩展名
     rawurl: str = Column(String)
     thumburl: str = Column(String)
     r18: bool = Column(Boolean)

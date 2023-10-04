@@ -7,9 +7,10 @@
 
 ## 食用方式
 
-1. `clone` 本项目
+1. `clone` 本项目并进入项目目录
 2. `pip install -r requirements.txt` 
 3. 复制 `.env.example`, 并改名为 `.env`, 填入所有配置
+4. `cp gallery-dl.conf.example gallery-dl.conf`, 查找 twitter, 填入用户名密码
 
 ## 参考
 

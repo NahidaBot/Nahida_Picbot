@@ -1,11 +1,9 @@
-import logging, telegram, re
-from config import config
-from platforms import pixiv
-from entities import Image
+import logging, re, os
 
 # from db import session
 
-from telegram import ForceReply, Update, ext
+import telegram
+from telegram import ForceReply, Update
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -13,24 +11,26 @@ from telegram.ext import (
     MessageHandler,
     filters,
 )
-from telegram.constants import ParseMode, ChatType
+from telegram.constants import ParseMode
+
+from config import config
+from platforms import pixiv, twitter
+from entities import Image
+
+MAX_FILE_SIZE = 10 * 1024 * 1024
+
+logger = logging.getLogger(__name__)
 
 if config.debug:
-# Enable logging
     logging.basicConfig(
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.DEBUG
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        level=logging.DEBUG,
     )
     # set higher logging level for httpx to avoid all GET and POST requests being logged
     logging.getLogger("httpcore").setLevel(logging.WARNING)
     logging.getLogger("httpx").setLevel(logging.WARNING)
 
 
-logger = logging.getLogger(__name__)
-
-# id_to_comment: dict[int,list[Image]] = {}
-
-# Define a few command handlers. These usually take the two arguments update and
-# context.
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user = update.effective_user
     await update.message.reply_html(
@@ -54,7 +54,9 @@ async def post(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await msg.reply_text("请求失败! 只支持在指定的对话中发布")
         return
 
-    post_msg = msg.text.replace("/post", "").replace(f"@{context.bot.username}","").strip()  # 处理原始命令
+    post_msg = (
+        msg.text.replace("/post", "").replace(f"@{context.bot.username}", "").strip()
+    )  # 处理原始命令
 
     user = msg.from_user
 
@@ -62,42 +64,88 @@ async def post(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     post_url = splited_msg[0]
     tags = splited_msg[1:]
 
-    if ("pixiv.net/artworks/" in post_msg) or re.match(r"[1-9]\d*", post_msg):
-        # print("pixiv")
-        await msg.reply_text("正在获取 Pixiv 图片...")
-        result = await pixiv.get_artworks(post_url, tags, user, context)
-        await msg.reply_text(result, ParseMode.HTML)
-    elif "twitter" in post_msg:
-        print("twitter")
-    else:
-        await msg.reply_text("获取失败，请检查url")
+    platform = None
+    success = False
 
-    pass
+    if ("pixiv.net/artworks/" in post_msg) or re.match(r"[1-9]\d*", post_msg):
+        platform = "Pixiv"
+        await msg.reply_text(f"正在获取 {platform} 图片...")
+        success, feedback, caption, images = await pixiv.get_artworks(
+            post_url, tags, user
+        )
+    elif "twitter" in post_msg or "x.com" in post_msg:
+        platform = "twitter"
+        await msg.reply_text(f"正在获取 {platform} 图片...")
+        post_url = post_url.replace("x.com", "twitter.com")
+        success, feedback, caption, images = await twitter.get_artworks(
+            post_url, tags, user
+        )
+    else:
+        feedback = "不支持的url"
+    if success:
+        caption += config.txt_msg_tail
+        feedback = await send_media_group(feedback, caption, images, platform)
+    await msg.reply_text(feedback, ParseMode.HTML)
+
+
+async def send_media_group(
+    msg: str, caption: str, images: list[Image], platform: str
+) -> str:
+    page_count = len(images)
+
+    reply_msg = None
+    media_group = []
+    for i in range(page_count):
+        file_path = f"./{platform}/{images[i].filename}"
+        if images[i].size >= MAX_FILE_SIZE:
+            media_group.append(
+                telegram.InputMediaPhoto(
+                    images[i].thumburl, has_spoiler=True if images[i].r18 else False
+                )
+            )
+        else:
+            with open(file_path, "rb") as f:
+                media_group.append(
+                    telegram.InputMediaPhoto(
+                        f, has_spoiler=True if images[i].r18 else False
+                    )
+                )
+    logger.debug(media_group)
+    reply_msg = await bot.send_media_group(
+        config.bot_channel, media_group, caption=caption, parse_mode=ParseMode.HTML
+    )
+    logger.debug(reply_msg)
+    reply_msg = reply_msg[0]
+
+    if reply_msg:
+        application.bot_data[reply_msg.id] = images
+    logger.info(application.bot_data[reply_msg.id])
+
+    msg += f"\n发送成功！"
+    return msg
 
 
 async def post_original_pic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    print("\n\n" + str(context.bot_data) + "\n\n")
+    logger.info(context.bot_data)
     msg = update.message
     if msg.forward_from_message_id in context.bot_data:
-        images = context.bot_data.pop(msg.forward_from_message_id)
-        page_count = len(images)
-        if page_count > 1:
-            media_group = []
-            for i in range(page_count):
-                media_group.append(telegram.InputMediaDocument(images[i].rawurl))
-            await msg.reply_media_group(media=media_group)
-        else:
-            await msg.reply_document(images[0].rawurl)
-
-
-# async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-#     await update.message.reply_text(update.message.text)
+        images: list[Image] = context.bot_data.pop(msg.forward_from_message_id)
+        media_group = []
+        for i in range(len(images)):
+            file_path = f"./{images[i].platform}/{images[i].filename}"
+            with open(file_path, "rb") as f:
+                media_group.append(telegram.InputMediaDocument(f))
+        await msg.reply_media_group(media=media_group)
 
 
 def main() -> None:
     """Start the bot."""
     # Create the Application and pass it your bot's token.
+    global application
     application = Application.builder().token(config.bot_token).build()
+
+    global bot
+    bot = application.bot
 
     # on different commands - answer in Telegram
     application.add_handler(CommandHandler("start", start))

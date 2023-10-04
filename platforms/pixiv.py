@@ -1,14 +1,18 @@
+import requests, json, os, logging, re
+from time import sleep
+
 from pixivpy3 import *
+from retry import retry
+from sqlalchemy import func
+
+import telegram
+from telegram import User
+from telegram.constants import ParseMode
+
 from config import config
 from entities import Image, ImageTag
-from telegram import User
-from telegram.ext import ContextTypes
-from telegram.constants import ParseMode
+from utils.escaper import html_esc
 from db import session
-from sqlalchemy import func
-import logging, telegram
-from retry import retry
-import os
 
 if not os.path.exists("./Pixiv/"):
     os.mkdir("./Pixiv/")
@@ -19,13 +23,9 @@ api.auth(refresh_token=config.pixiv_refresh_token)
 
 logger = logging.getLogger(__name__)
 
-# TODO 注意，ImageTags尚未启用
-
 
 def refresh_token() -> None:
     api.auth(refresh_token=config.pixiv_refresh_token)
-    from time import sleep
-
     sleep(1)
 
 
@@ -41,8 +41,8 @@ def get_illust(pid: int | str) -> None:
 
 
 async def get_artworks(
-    url: str, input_tags: list, user: User, context: ContextTypes.DEFAULT_TYPE
-) -> str:
+    url: str, input_tags: list, user: User
+) -> (bool, str, str, list[Image]):
     pid = url.strip("/").split("/")[-1]  # 取 PID
 
     illust = get_illust(pid)
@@ -53,9 +53,12 @@ async def get_artworks(
     existing_image = session.query(Image).filter_by(pid=pid).first()
     if config.bot_deduplication_mode and existing_image:
         logger.warning("试图发送重复的图片: Pixiv" + pid)
-        return f"该图片已经由 @{existing_image.username} 于 {str(existing_image.create_time)[:-7]} 发过"
-
-    meta_pages = illust["meta_pages"]
+        return (
+            False,
+            f"该图片已经由 @{existing_image.username} 于 {str(existing_image.create_time)[:-7]} 发过",
+            None,
+            None,
+        )
 
     image_width_height_info = await get_artworks_width_height(pid)
     msg = f"""获取成功！
@@ -68,7 +71,16 @@ async def get_artworks(
         image_tag = ImageTag(pid=pid, tag=tag)
         session.add(image_tag)
 
+    meta_pages = illust["meta_pages"]
     for i in range(page_count):
+        if page_count > 1:
+            rawurl: str = meta_pages[i]["image_urls"]["original"]
+        else:
+            rawurl: str = illust["meta_single_page"]["original_image_url"]
+        api.download(rawurl, path="./Pixiv/")
+        filename = rawurl.split("/")[-1]
+        file_path = f"./Pixiv/{filename}"
+        file_size = os.path.getsize(file_path)
         img = Image(
             userid=user.id,
             username=user.username,
@@ -76,12 +88,13 @@ async def get_artworks(
             pid=pid,
             title=illust["title"],
             page=i,
+            size=file_size,
+            filename=filename,
             author=illust["user"]["name"],
             authorid=illust["user"]["id"],
             r18=True if illust["x_restrict"] == 1 else False,
-            rawurl=meta_pages[i]["image_urls"]["original"]
-            if page_count > 1
-            else illust["meta_single_page"]["original_image_url"],
+            extension=rawurl.split(".")[-1],
+            rawurl=rawurl,
             thumburl=meta_pages[i]["image_urls"]["large"]
             if page_count > 1
             else illust["image_urls"]["large"],
@@ -92,72 +105,18 @@ async def get_artworks(
             msg += f"第{i+1}张图片：{img.width}x{img.height}\n"
         images.append(img)
         session.add(img)
-        api.download(img.rawurl, path="./Pixiv/")
     session.commit()
 
-    from utils.escaper import html_esc
-
-    caption = f"""<b>{html_esc(images[0].title)}</b>
+    caption = f"""\
+<b>{html_esc(images[0].title)}</b>
 <a href="https://www.pixiv.net/artworks/{pid}">Source</a> by <a href="https://www.pixiv.net/users/{images[0].authorid}">Pixiv @{html_esc(images[0].author)}</a>
 {" ".join(input_tags if input_tags else translated_tags)}
-{config.txt_msg_tail}
 """
-    reply_msg = None
-    if page_count > 1:
-        media_group = []
-        for i in range(page_count):
-            file_path = f"./Pixiv/{images[i].rawurl.split('/')[-1]}"
-            logger.debug(file_path)
-            file_size = os.path.getsize(file_path)
-            if file_size >= (1024 * 1024 * 10 - 1024):
-                file_path = images[i].thumburl
-            with open(file_path, "rb") as f:
-                if i == 0:
-                    media_group.append(
-                        telegram.InputMediaPhoto(
-                            f,
-                            caption,
-                            parse_mode=ParseMode.HTML,
-                            has_spoiler=True if images[i].r18 else False,
-                        )
-                    )
-                else:
-                    media_group.append(
-                        telegram.InputMediaPhoto(
-                            f,
-                            has_spoiler=True if images[i].r18 else False,
-                        )
-                    )
-        logger.debug(media_group)
-        reply_msg = await context.bot.send_media_group(config.bot_channel, media_group)
-        reply_msg = reply_msg[0]
-    else:
-        file_path = f"./Pixiv/{images[0].rawurl.split('/')[-1]}"
-        logger.debug(file_path)
-        file_size = os.path.getsize(file_path)
-        if file_size >= (1024 * 1024 * 10 - 1024):
-            file_path = images[0].thumburl
-        logger.debug(images[0])
-        with open(file_path, "rb") as f:
-            reply_msg = await context.bot.send_photo(
-                config.bot_channel,
-                f,
-                caption,
-                parse_mode=ParseMode.HTML,
-                has_spoiler=True if images[i].r18 else False,
-            )
 
-    if reply_msg:
-        context.bot_data[reply_msg.id] = images
-    logger.info(str(context.bot_data[reply_msg.id]))
-
-    msg += f"\n发送成功！"
-    return msg
+    return (True, msg, caption, images)
 
 
 async def get_artworks_width_height(pid: int) -> list | None:
-    import requests, json
-
     cookies = {"PHPSESSID": config.pixiv_phpsessid}
     headers = {
         "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36",
@@ -177,6 +136,7 @@ async def get_artworks_width_height(pid: int) -> list | None:
 
 
 async def get_translated_tags(tags: list[dict[str, str]]) -> list[str]:
+    PUNCTUATION_PATTERN = r"""[!"$%&'()*+,-./:;<=>?@[\]^`{|}~．！？｡。＂＃＄％＆＇（）＊＋，－／：；＜＝＞＠［＼］＾＿｀｛｜｝～｟｠｢｣､　、〃〈〉《》「」『』【】〔〕〖〗〘〙〚〛〜〝〞〟〰〾〿–—‘’‛“”„‟…‧﹏﹑﹔·]"""
     logger.debug(tags)
     CHINESE_REGEXP = "[一-龥]"
     # https://github.com/xuejianxianzun/PixivBatchDownloader/blob/397c16670bb480810d93bba70bb784bd0707bdee/src/ts/Tools.ts#L399
@@ -187,7 +147,6 @@ async def get_translated_tags(tags: list[dict[str, str]]) -> list[str]:
     # 但是如果原标签里没有中文则依然会使用翻译后的标签，如 フラミンゴ flamingo
     use_origin_tag = True
     translated_tags = []
-    import re
 
     for tag in tags:
         if tag["translated_name"]:
@@ -195,11 +154,10 @@ async def get_translated_tags(tags: list[dict[str, str]]) -> list[str]:
             if tag["translated_name"].isascii():
                 if re.match(CHINESE_REGEXP, tag["name"]):
                     use_origin_tag = True
-        ptn = r"""[!"$%&'()*+,-./:;<=>?@[\]^`{|}~．！？｡。＂＃＄％＆＇（）＊＋，－／：；＜＝＞＠［＼］＾＿｀｛｜｝～｟｠｢｣､　、〃〈〉《》「」『』【】〔〕〖〗〘〙〚〛〜〝〞〟〰〾〿–—‘’‛“”„‟…‧﹏﹑﹔·]"""
         tag = (tag["name"] if use_origin_tag else tag["translated_name"]).replace(
             " ", "_"
         )
-        tag = re.sub(ptn, "", tag)
+        tag = re.sub(PUNCTUATION_PATTERN, "", tag)
         translated_tags.append("#" + tag)
     logger.debug(translated_tags)
     return translated_tags
