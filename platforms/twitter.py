@@ -1,4 +1,4 @@
-import requests, json, os, logging, subprocess
+import requests, json, os, logging, subprocess, re
 from time import sleep
 
 from retry import retry
@@ -57,6 +57,15 @@ async def get_artworks(
         )
 
     author = tweet_info["author"]
+    tweet_content = tweet_info["content"]
+
+    HASHTAG_PATTERN = r'''#[^ !@#$%^&*(),.?":{}|<>]+'''
+    tags = re.findall(HASHTAG_PATTERN, tweet_content)
+    HASHTAG_PATTERN_SPACE = r'''(?:\s)?#[^ !@#$%^&*(),.?":{}|<>]+(?:\s)?'''
+    tweet_content = re.sub(HASHTAG_PATTERN_SPACE, "", tweet_content).strip()
+
+    tags = set(tags+input_tags)
+
     for image in tweet_json:
         if image[0] == 3:
             image_json = image[2]
@@ -66,7 +75,7 @@ async def get_artworks(
                 username=user.username,
                 platform="twitter",
                 pid=pid,
-                title=tweet_info["content"],
+                title=tweet_content,
                 page=image_json["num"],
                 author=author["id"],
                 authorid=author["name"],
@@ -91,6 +100,7 @@ async def get_artworks(
     caption = f"""\
 {html_esc(images[0].title)}
 <a href="https://twitter.com/{author["id"]}/status/{pid}">Source</a> by <a href="https://twitter.com/{author["id"]}">twitter @{author["id"]}</a>
+{" ".join(tags)}
 """
 
     return (True, msg, caption, images)
