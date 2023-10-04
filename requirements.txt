@@ -3,5 +3,5 @@ pydantic
 pydantic_settings
 sqlalchemy
 pixivpy3
-gallery-dl
+gallery-dl @ git+https://github.com/CHxCOOH/gallery-dl.git
 retry
