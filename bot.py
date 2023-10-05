@@ -126,7 +126,7 @@ async def send_media_group(
 async def post_original_pic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     logger.info(context.bot_data)
     msg = update.message
-    if msg.forward_from_message_id in context.bot_data:
+    if msg.forward_from_message_id and msg.forward_from_message_id in context.bot_data:
         images: list[Image] = context.bot_data.pop(msg.forward_from_message_id)
         media_group = []
         for image in images:
