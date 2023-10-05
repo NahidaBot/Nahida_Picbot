@@ -47,7 +47,6 @@ async def get_artworks(
 
     illust = get_illust(pid)
 
-    translated_tags = await get_translated_tags(illust["tags"])
     page_count = illust["page_count"]
 
     existing_image = session.query(Image).filter_by(pid=pid).first()
@@ -66,10 +65,18 @@ async def get_artworks(
 共有{page_count}张图片
 """
     images: list[Image] = []
+    r18: bool = illust["x_restrict"] == 1
 
-    for tag in translated_tags:
+    # tag 处理
+    if not input_tags:
+        input_tags = await get_translated_tags(illust["tags"])
+    input_tags: set = set(input_tags)
+    for tag in input_tags:
         image_tag = ImageTag(pid=pid, tag=tag)
         session.add(image_tag)
+    if r18:
+        input_tags.add("#NSFW")
+    
 
     meta_pages = illust["meta_pages"]
     for i in range(page_count):
@@ -92,7 +99,7 @@ async def get_artworks(
             filename=filename,
             author=illust["user"]["name"],
             authorid=illust["user"]["id"],
-            r18=True if illust["x_restrict"] == 1 else False,
+            r18=r18,
             extension=rawurl.split(".")[-1],
             rawurl=rawurl,
             thumburl=meta_pages[i]["image_urls"]["large"]
@@ -110,7 +117,7 @@ async def get_artworks(
     caption = f"""\
 <b>{html_esc(images[0].title)}</b>
 <a href="https://www.pixiv.net/artworks/{pid}">Source</a> by <a href="https://www.pixiv.net/users/{images[0].authorid}">Pixiv @{html_esc(images[0].author)}</a>
-{" ".join(input_tags if input_tags else translated_tags)}
+{" ".join(input_tags)}
 """
 
     return (True, msg, caption, images)
@@ -149,6 +156,8 @@ async def get_translated_tags(tags: list[dict[str, str]]) -> list[str]:
     translated_tags = []
 
     for tag in tags:
+        if "users入り" in tag["name"]:
+            continue
         if tag["translated_name"]:
             use_origin_tag = False
             if tag["translated_name"].isascii():
@@ -156,6 +165,9 @@ async def get_translated_tags(tags: list[dict[str, str]]) -> list[str]:
                     use_origin_tag = True
         tag = tag["name"] if use_origin_tag else tag["translated_name"]
         if tag:
+            if len(tag.split()) > 3:
+                # 防止出现过长的英文标签
+                continue
             tag = (tag).replace(" ", "_")
             tag = re.sub(PUNCTUATION_PATTERN, "", tag)
             translated_tags.append("#" + tag)
