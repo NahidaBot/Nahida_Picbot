@@ -23,11 +23,7 @@ URL支持Pixiv或者Twitter链接，后面必须有<b>至少一个</b>tag
 成功获取后，会直接发送到频道，并将原图发到评论区~\n
 请注意：稿件有多图时, 会将全部图片合并发送\
 """
-    txt_msg_tail: str = """\
-—————
-<a href="https://t.me/gongzhutonghao/710">频道导航</a>
-原图已上传至评论区\
-"""
+    txt_msg_tail: str = ""
 
     class Config:
         env_file = ".env"
