@@ -1,4 +1,4 @@
-import logging, re, os
+import logging, re, datetime
 
 # from db import session
 
@@ -97,20 +97,26 @@ async def send_media_group(
         file_path = f"./{platform}/{image.filename}"
         if image.size >= MAX_FILE_SIZE:
             media_group.append(
-                telegram.InputMediaPhoto(
-                    image.thumburl, has_spoiler=image.r18
-                )
+                telegram.InputMediaPhoto(image.thumburl, has_spoiler=image.r18)
             )
         else:
             with open(file_path, "rb") as f:
-                media_group.append(
-                    telegram.InputMediaPhoto(
-                        f, has_spoiler=image.r18
-                    )
-                )
+                media_group.append(telegram.InputMediaPhoto(f, has_spoiler=image.r18))
     logger.debug(media_group)
+
+    disable_notification = False
+    now = datetime.datetime.now()
+    interval = now - application.bot_data["last_msg"]
+    if interval.total_seconds() < 300:
+        disable_notification = True
+    application.bot_data["last_msg"] = now
+
     reply_msg = await bot.send_media_group(
-        config.bot_channel, media_group, caption=caption, parse_mode=ParseMode.HTML
+        config.bot_channel,
+        media_group,
+        caption=caption,
+        parse_mode=ParseMode.HTML,
+        disable_notification=disable_notification,
     )
     logger.debug(reply_msg)
     reply_msg = reply_msg[0]
@@ -144,6 +150,7 @@ def main() -> None:
 
     global bot
     bot = application.bot
+    application.bot_data["last_msg"] = datetime.datetime.fromtimestamp(0)
 
     # on different commands - answer in Telegram
     application.add_handler(CommandHandler("start", start))

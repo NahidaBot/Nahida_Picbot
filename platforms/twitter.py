@@ -59,12 +59,12 @@ async def get_artworks(
     author = tweet_info["author"]
     tweet_content = tweet_info["content"]
 
-    HASHTAG_PATTERN = r'''#[^\s!@#$%^&*(),.?":{}|<>]+'''
+    HASHTAG_PATTERN = r"""#[^\s!@#$%^&*(),.?":{}|<>]+"""
     tags = re.findall(HASHTAG_PATTERN, tweet_content)
-    HASHTAG_PATTERN_SPACE = r'''(?:\s)?#[^\s!@#$%^&*(),.?":{}|<>]+(?:\s)?'''
+    HASHTAG_PATTERN_SPACE = r"""(?:\s)?#[^\s!@#$%^&*(),.?":{}|<>]+(?:\s)?"""
     tweet_content = re.sub(HASHTAG_PATTERN_SPACE, "", tweet_content)
 
-    tags = set(tags+input_tags)
+    tags = set(tags + input_tags)
 
     for image in tweet_json:
         if image[0] == 3:

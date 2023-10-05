@@ -76,7 +76,6 @@ async def get_artworks(
         session.add(image_tag)
     if r18:
         input_tags.add("#NSFW")
-    
 
     meta_pages = illust["meta_pages"]
     for i in range(page_count):
