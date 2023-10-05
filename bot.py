@@ -98,14 +98,14 @@ async def send_media_group(
         if image.size >= MAX_FILE_SIZE:
             media_group.append(
                 telegram.InputMediaPhoto(
-                    image.thumburl, has_spoiler=True if image.r18 else False
+                    image.thumburl, has_spoiler=image.r18
                 )
             )
         else:
             with open(file_path, "rb") as f:
                 media_group.append(
                     telegram.InputMediaPhoto(
-                        f, has_spoiler=True if image.r18 else False
+                        f, has_spoiler=image.r18
                     )
                 )
     logger.debug(media_group)
