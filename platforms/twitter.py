@@ -99,7 +99,7 @@ async def get_artworks(
     msg = f"""获取成功！\n共有{page_count}张图片\n"""
     caption = f"""\
 {html_esc(images[0].title)}
-<a href="https://twitter.com/{author["id"]}/status/{pid}">Source</a> by <a href="https://twitter.com/{author["id"]}">twitter @{author["id"]}</a>
+<a href="https://twitter.com/{author["name"]}/status/{pid}">Source</a> by <a href="https://twitter.com/{author["name"]}">twitter @{author["name"]}</a>
 {" ".join(tags)}
 """
 
