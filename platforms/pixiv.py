@@ -12,6 +12,7 @@ from telegram.constants import ParseMode
 from config import config
 from entities import Image, ImageTag
 from utils.escaper import html_esc
+from utils import check_deduplication
 from db import session
 
 if not os.path.exists("./Pixiv/"):
@@ -35,7 +36,7 @@ def get_illust(pid: int | str) -> None:
         illust = api.illust_detail(pid)["illust"]
         return illust
     except Exception as e:
-        logger.error("获取失败，可能是Pixiv_refresh_token过期，正在尝试刷新")
+        logger.error("获取失败, 可能是Pixiv_refresh_token过期, 正在尝试刷新")
         refresh_token()
         raise e
 
@@ -52,7 +53,7 @@ async def get_artworks(
 
     page_count = illust["page_count"]
 
-    existing_image = session.query(Image).filter_by(pid=pid).first()
+    existing_image = check_deduplication(pid)
     if post_mode and config.bot_deduplication_mode and existing_image:
         logger.warning("试图发送重复的图片: Pixiv" + pid)
         return (
@@ -107,6 +108,7 @@ async def get_artworks(
             thumburl=meta_pages[i]["image_urls"]["large"]
             if page_count > 1
             else illust["image_urls"]["large"],
+            guest=(not post_mode),
         )
         if image_width_height_info:
             img.width = image_width_height_info[i]["width"]
@@ -145,15 +147,15 @@ async def get_artworks_width_height(pid: int) -> list | None:
 
 
 async def get_translated_tags(tags: list[dict[str, str]]) -> list[str]:
-    PUNCTUATION_PATTERN = r"""[!"$%&'()*+,-./:;<=>?@[\]^`{|}~．！？｡。＂＃＄％＆＇（）＊＋，－／：；＜＝＞＠［＼］＾＿｀｛｜｝～｟｠｢｣､　、〃〈〉《》「」『』【】〔〕〖〗〘〙〚〛〜〝〞〟〰〾〿–—‘’‛“”„‟…‧﹏﹑﹔·]"""
+    PUNCTUATION_PATTERN = r"""[!"$%&'()*+,-./:;<=>?@[\]^`{|}~．！？｡。＂＃＄％＆＇（）＊＋, －／：；＜＝＞＠［＼］＾＿｀｛｜｝～｟｠｢｣､　、〃〈〉《》「」『』【】〔〕〖〗〘〙〚〛〜〝〞〟〰〾〿–—‘’‛“”„‟…‧﹏﹑﹔·]"""
     logger.debug(tags)
     CHINESE_REGEXP = "[一-龥]"
     # https://github.com/xuejianxianzun/PixivBatchDownloader/blob/397c16670bb480810d93bba70bb784bd0707bdee/src/ts/Tools.ts#L399
-    # 如果用户在 Pixiv 的页面语言是中文，则应用优化策略
-    # 如果翻译后的标签是纯英文，则判断原标签是否含有至少一部分中文，如果是则使用原标签
-    # 这是为了解决一些中文标签被翻译成英文的问题，如 原神 被翻译为 Genshin Impact
+    # 如果用户在 Pixiv 的页面语言是中文, 则应用优化策略
+    # 如果翻译后的标签是纯英文, 则判断原标签是否含有至少一部分中文, 如果是则使用原标签
+    # 这是为了解决一些中文标签被翻译成英文的问题, 如 原神 被翻译为 Genshin Impact
     # 能代(アズールレーン) Noshiro (Azur Lane) 也会使用原标签
-    # 但是如果原标签里没有中文则依然会使用翻译后的标签，如 フラミンゴ flamingo
+    # 但是如果原标签里没有中文则依然会使用翻译后的标签, 如 フラミンゴ flamingo
     use_origin_tag = True
     translated_tags = []
 

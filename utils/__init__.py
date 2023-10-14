@@ -1,6 +1,9 @@
-import io
-from PIL import Image
+import io, logging
+import PIL.Image
+from db import session
+from entities import Image
 
+logger = logging.getLogger(__name__)
 
 def compress_image(
     input_path: str, output_path: str, target_size_mb: int = 10, quality=100
@@ -9,7 +12,7 @@ def compress_image(
     Compress an image to the target size (in MB) to upload it.
     """
     # Open the image
-    with Image.open(input_path) as img:
+    with PIL.Image.open(input_path) as img:
         # If the image has an alpha (transparency) channel, convert it to RGB
         if img.mode != "RGB":
             img = img.convert("RGB")
@@ -22,7 +25,7 @@ def compress_image(
             aspect_ratio = width / height
             width = min(MAX_SUM / (aspect_ratio + 1), MAX_WIDTH)
             height = width / aspect_ratio
-            img = img.resize((int(width), int(height)), Image.LANCZOS)
+            img = img.resize((int(width), int(height)), PIL.Image.LANCZOS)
 
         # Check if the image size is already acceptable
         img_byte_arr = io.BytesIO()
@@ -40,3 +43,8 @@ def compress_image(
         # Save the compressed image
         with open(output_path, "wb") as f_out:
             f_out.write(img_byte_arr.getvalue())
+
+def check_deduplication(pid: int|str) -> Image | None:
+    image = session.query(Image).filter_by(pid=pid, guest=False).first()
+    logger.debug(image)
+    return image

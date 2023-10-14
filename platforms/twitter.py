@@ -4,13 +4,12 @@ from time import sleep
 from retry import retry
 from sqlalchemy import func
 
-import telegram
 from telegram import User
-from telegram.constants import ParseMode
 
 from config import config
 from entities import Image
 from utils.escaper import html_esc
+from utils import check_deduplication
 from db import session
 
 logger = logging.getLogger(__name__)
@@ -46,8 +45,8 @@ async def get_artworks(
     tweet_info = tweet_json[0][1]
     pid = tweet_info["tweet_id"]
 
-    existing_image = session.query(Image).filter_by(pid=pid).first()
-    if config.bot_deduplication_mode and existing_image:
+    existing_image = check_deduplication(pid)
+    if post_mode and config.bot_deduplication_mode and existing_image:
         logger.warning("试图发送重复的图片: twitter" + pid)
         return (
             False,
@@ -60,8 +59,8 @@ async def get_artworks(
     tweet_content = tweet_info["content"]
 
     HASHTAG_PATTERN = r"""#[^\s!@#$%^&*(),.?":{}|<>]+"""
-    tags = re.findall(HASHTAG_PATTERN, tweet_content)
     HASHTAG_PATTERN_SPACE = r"""(?:\s)?#[^\s!@#$%^&*(),.?":{}|<>]+(?:\s)?"""
+    tags = re.findall(HASHTAG_PATTERN, tweet_content)
     tweet_content = re.sub(HASHTAG_PATTERN_SPACE, "", tweet_content)
 
     tags = set(tags + input_tags)
@@ -83,6 +82,7 @@ async def get_artworks(
                 extension=extension,
                 rawurl=image[1],
                 thumburl=image[1].replace("orig", "large"),
+                guest=(not post_mode),
             )
             images.append(img)
             r = requests.get(img.rawurl)

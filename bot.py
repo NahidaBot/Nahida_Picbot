@@ -170,11 +170,14 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     msg = update.message
     logging.info(msg.text)
 
-    success, feedback, caption, images = await get_artworks(update.message, post_mode=False)
+    success, feedback, caption, images = await get_artworks(
+        update.message, post_mode=False
+    )
     if success:
         caption += config.txt_msg_tail
         feedback = await send_media_group(feedback, caption, images, msg.chat_id)
     await post_original_pic(chat_id=msg.chat_id, images=images)
+
 
 async def set_commands(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if update.message.chat_id not in config.bot_admin_chats:
@@ -186,12 +189,13 @@ async def set_commands(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         BotCommand("echo", "/echo url #tag1 #tag2 返回预览, 支持twitter,Pixiv"),
         BotCommand("ping", "hello"),
     ]
-    
+
     r = await context.bot.set_my_commands(commands)
     await update.message.reply_text(str(r))
 
+
 async def permission_denied(message: telegram.Message) -> None:
-    await message.reply_text("permission denied")    
+    await message.reply_text("permission denied")
 
 
 def main() -> None:
@@ -212,7 +216,6 @@ def main() -> None:
     application.add_handler(CommandHandler("echo", echo))
     application.add_handler(CommandHandler("set_commands", set_commands))
     application.add_handler(MessageHandler(filters.FORWARDED, get_channel_post))
-
 
     # Run the bot until the user presses Ctrl-C
     application.run_polling(allowed_updates=Update.ALL_TYPES)
