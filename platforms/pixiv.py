@@ -41,8 +41,11 @@ def get_illust(pid: int | str) -> None:
 
 
 async def get_artworks(
-    url: str, input_tags: list, user: User
+    url: str, input_tags: list, user: User, post_mode: bool = True
 ) -> (bool, str, str, list[Image]):
+    """
+    只有 post_mode 和 config.bot_deduplication_mode 都为 True, 才检测重复
+    """
     pid = url.strip("/").split("/")[-1]  # 取 PID
 
     illust = get_illust(pid)
@@ -50,7 +53,7 @@ async def get_artworks(
     page_count = illust["page_count"]
 
     existing_image = session.query(Image).filter_by(pid=pid).first()
-    if config.bot_deduplication_mode and existing_image:
+    if post_mode and config.bot_deduplication_mode and existing_image:
         logger.warning("试图发送重复的图片: Pixiv" + pid)
         return (
             False,
