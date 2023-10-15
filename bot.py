@@ -16,7 +16,7 @@ from telegram.constants import ParseMode
 from config import config
 from platforms import pixiv, twitter
 from entities import Image
-from utils import compress_image
+from utils import compress_image, is_within_size_limit
 
 MAX_FILE_SIZE = 10 * 1024 * 1024
 
@@ -102,7 +102,7 @@ async def send_media_group(
     media_group = []
     for image in images:
         file_path = f"./{image.platform}/{image.filename}"
-        if image.size >= MAX_FILE_SIZE:
+        if image.size >= MAX_FILE_SIZE or not is_within_size_limit(file_path):
             img_compressed = "./Pixiv/cache.jpg"
             compress_image(file_path, img_compressed)
             file_path = img_compressed

@@ -4,6 +4,7 @@ from db import session
 from entities import Image
 
 logger = logging.getLogger(__name__)
+MAX_SIDE = 2560
 
 def compress_image(
     input_path: str, output_path: str, target_size_mb: int = 10, quality=100
@@ -17,15 +18,11 @@ def compress_image(
         if img.mode != "RGB":
             img = img.convert("RGB")
 
-        MAX_SUM = 10000
-        MAX_WIDTH = 2560
         width, height = img.size
-        if width + height > MAX_SUM or width > MAX_WIDTH:
-            print("resized")
-            aspect_ratio = width / height
-            width = min(MAX_SUM / (aspect_ratio + 1), MAX_WIDTH)
-            height = width / aspect_ratio
-            img = img.resize((int(width), int(height)), PIL.Image.LANCZOS)
+        if (max_side := max(height, width)) > MAX_SIDE:
+            logger.info("meet limits. resized.")
+            scale_factor = 2560 / max_side
+            img = img.resize((int(width*scale_factor), int(height*scale_factor)), PIL.Image.LANCZOS)
 
         # Check if the image size is already acceptable
         img_byte_arr = io.BytesIO()
@@ -43,6 +40,15 @@ def compress_image(
         # Save the compressed image
         with open(output_path, "wb") as f_out:
             f_out.write(img_byte_arr.getvalue())
+
+def is_within_size_limit(input_path: str) -> bool:
+    with PIL.Image.open(input_path) as img:
+        width, height = img.size
+        if max(height, width) > MAX_SIDE:
+            return False
+    return True
+
+
 
 def check_deduplication(pid: int|str) -> Image | None:
     image = session.query(Image).filter_by(pid=pid, guest=False).first()
