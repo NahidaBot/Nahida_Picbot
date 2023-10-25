@@ -83,6 +83,8 @@ async def get_artworks(
                 rawurl=image[1],
                 thumburl=image[1].replace("orig", "large"),
                 guest=(not post_mode),
+                width=image_json["width"],
+                height=image_json["height"]
             )
             images.append(img)
             r = requests.get(img.rawurl)
