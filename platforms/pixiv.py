@@ -55,7 +55,7 @@ async def get_artworks(
 
     existing_image = check_deduplication(pid)
     if post_mode and config.bot_deduplication_mode and existing_image:
-        logger.warning("试图发送重复的图片: Pixiv" + pid)
+        logger.warning("试图发送重复的图片: Pixiv" + str(pid))
         return (
             False,
             f"该图片已经由 @{existing_image.username} 于 {str(existing_image.create_time)[:-7]} 发过",
