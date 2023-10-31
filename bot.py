@@ -63,6 +63,10 @@ async def post(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def get_artworks(msg: telegram.Message, post_mode: bool = True) -> tuple:
+    """
+    post_mode 为 True 时，发送到频道，否则，直接将消息返回给用户。
+    只有发送到频道时才会尝试去重。
+    """
     splited_msg = msg.text.split()[1:]
     post_url = splited_msg[0]
     tags = splited_msg[1:]
@@ -114,7 +118,7 @@ async def send_media_group(
     disable_notification = False
     now = datetime.datetime.now()
     interval = now - application.bot_data["last_msg"]
-    if interval.total_seconds() < 300:
+    if interval.total_seconds() < config.bot_disable_notification_interval:
         disable_notification = True
     application.bot_data["last_msg"] = now
 

@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     bot_channel: str
     bot_channel_comment_group: int
     bot_deduplication_mode: bool
+    bot_disable_notification_interval: int = 600
 
     db_url: str
 
