@@ -1,10 +1,12 @@
-import io, logging
+import io
+import logging
 import PIL.Image
 from db import session
 from entities import Image
 
 logger = logging.getLogger(__name__)
 MAX_SIDE = 2560
+
 
 def compress_image(
     input_path: str, output_path: str, target_size_mb: int = 10, quality=100
@@ -22,7 +24,8 @@ def compress_image(
         if (max_side := max(height, width)) > MAX_SIDE:
             logger.info("meet limits. resized.")
             scale_factor = 2560 / max_side
-            img = img.resize((int(width*scale_factor), int(height*scale_factor)), PIL.Image.LANCZOS)
+            img = img.resize(
+                (int(width*scale_factor), int(height*scale_factor)), PIL.Image.LANCZOS)
 
         # Check if the image size is already acceptable
         img_byte_arr = io.BytesIO()
@@ -41,6 +44,7 @@ def compress_image(
         with open(output_path, "wb") as f_out:
             f_out.write(img_byte_arr.getvalue())
 
+
 def is_within_size_limit(input_path: str) -> bool:
     with PIL.Image.open(input_path) as img:
         width, height = img.size
@@ -49,8 +53,22 @@ def is_within_size_limit(input_path: str) -> bool:
     return True
 
 
-
-def check_deduplication(pid: int|str) -> Image | None:
+def check_deduplication(pid: int | str) -> Image | None:
     image = session.query(Image).filter_by(pid=pid, guest=False).first()
     logger.debug(image)
     return image
+
+
+def unmark_deduplication(pid: int | str) -> None:
+    '''
+    反标记
+    具体实现方法是直接删除匹配 pid 的项 (
+    '''
+    images_to_delete = session.query(Image).filter(Image.pid == int(pid)).all()
+
+    # 删除查询到的数据
+    for image in images_to_delete:
+        session.delete(image)
+
+    # 提交更改
+    session.commit()

@@ -1,4 +1,7 @@
-import requests, json, os, logging, re
+import os
+import re
+import requests
+import logging
 from time import sleep
 
 from pixivpy3 import *
@@ -15,8 +18,10 @@ from utils.escaper import html_esc
 from utils import check_deduplication
 from db import session
 
-if not os.path.exists("./Pixiv/"):
-    os.mkdir("./Pixiv/")
+platform = "Pixiv"
+
+if not os.path.exists(f"./{platform}/"):
+    os.mkdir(f"./{platform}/")
 
 api = AppPixivAPI()
 api.set_accept_language("zh-cn")
@@ -36,13 +41,13 @@ def get_illust(pid: int | str) -> None:
         illust = api.illust_detail(pid)["illust"]
         return illust
     except Exception as e:
-        logger.error("获取失败, 可能是Pixiv_refresh_token过期, 正在尝试刷新")
+        logger.error("获取失败, 可能是 Pixiv_refresh_token 过期, 正在尝试刷新")
         refresh_token()
         raise e
 
 
 async def get_artworks(
-    url: str, input_tags: list, user: User, post_mode: bool = True
+    url: str, input_tags: list[str], user: User, post_mode: bool = True
 ) -> (bool, str, str, list[Image]):
     """
     只有 post_mode 和 config.bot_deduplication_mode 都为 True, 才检测重复
@@ -55,21 +60,22 @@ async def get_artworks(
 
     existing_image = check_deduplication(pid)
     if post_mode and config.bot_deduplication_mode and existing_image:
-        logger.warning("试图发送重复的图片: Pixiv" + str(pid))
+        logger.warning(f"试图发送重复的图片: {platform}" + str(pid))
         return (
             False,
-            f"该图片已经由 @{existing_image.username} 于 {str(existing_image.create_time)[:-7]} 发过",
+            f"该图片已经由 @{existing_image.username} 于 {
+                str(existing_image.create_time)[:-7]} 发过",
             None,
             None,
         )
 
     image_width_height_info = await get_artworks_width_height(pid)
-    msg = f"""获取成功！
-<b>{illust["title"]}</b>
-共有{page_count}张图片
-"""
+    msg = (f'获取成功！\n'
+           f'<b>{illust["title"]}</b>\n'
+           f'共有{page_count}张图片\n')
+
     images: list[Image] = []
-    r18: bool = illust["x_restrict"] == 1
+    r18: bool = (illust["x_restrict"] == 1 or ("#NSFW" in input_tags))
 
     # tag 处理
     if not input_tags:
@@ -87,14 +93,14 @@ async def get_artworks(
             rawurl: str = meta_pages[i]["image_urls"]["original"]
         else:
             rawurl: str = illust["meta_single_page"]["original_image_url"]
-        api.download(rawurl, path="./Pixiv/")
+        api.download(rawurl, path=f"./{platform}/")
         filename = rawurl.split("/")[-1]
-        file_path = f"./Pixiv/{filename}"
+        file_path = f"./{platform}/{filename}"
         file_size = os.path.getsize(file_path)
         img = Image(
             userid=user.id,
             username=user.username,
-            platform="Pixiv",
+            platform=platform,
             pid=pid,
             title=illust["title"],
             page=i,
@@ -118,11 +124,12 @@ async def get_artworks(
         session.add(img)
     session.commit()
 
-    caption = f"""\
-<b>{html_esc(images[0].title)}</b>
-<a href="https://www.pixiv.net/artworks/{pid}">Source</a> by <a href="https://www.pixiv.net/users/{images[0].authorid}">Pixiv @{html_esc(images[0].author)}</a>
-{" ".join(input_tags)}
-"""
+    caption = (
+        f'<b>{html_esc(images[0].title)}</b>\n'
+        f'<a href="https: //www.pixiv.net/artworks/{pid}">Source</a> by <a href="https: //www.pixiv.net/users/{
+            images[0].authorid}">Pixiv @{html_esc(images[0].author)}</a>\n'
+        f'{" ".join(input_tags)}\n'
+    )
 
     return (True, msg, caption, images)
 
@@ -134,14 +141,14 @@ async def get_artworks_width_height(pid: int) -> list | None:
     }
     try:
         response = requests.get(
-            f"https://www.pixiv.net/ajax/illust/{pid}/pages",
+            f"https: //www.pixiv.net/ajax/illust/{pid}/pages",
             cookies=cookies,
             headers=headers,
         )
         logger.info(response.content)
-        return json.loads(response.content)["body"]
+        return response.json()
     except Exception as e:
-        logger.error("在请求Pixiv Web API的时候发生了一个错误")
+        logger.error("在请求 Pixiv Web API 时发生了一个错误")
         logger.error(e)
     return None
 
