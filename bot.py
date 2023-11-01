@@ -65,7 +65,7 @@ async def post(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def get_artworks(
-    msg: telegram.Message, post_mode: bool = True, feedback: bool = True
+    msg: telegram.Message, post_mode: bool = True, instant_feedback: bool = True
 ) -> tuple:
     """
     post_mode 为 True 时，发送到频道，否则，直接将消息返回给用户。
@@ -83,20 +83,20 @@ async def get_artworks(
     images = None
 
     if ("pixiv.net/artworks/" in post_url) or re.match(r"[1-9]\d*", post_url):
-        if feedback:
+        if instant_feedback:
             await msg.reply_text("正在获取 Pixiv 图片...")
         success, feedback, caption, images = await pixiv.get_artworks(
             post_url, tags, user, post_mode
         )
     elif "twitter" in post_url or "x.com" in post_url:
-        if feedback:
+        if instant_feedback:
             await msg.reply_text("正在获取 twitter 图片...")
         post_url = post_url.replace("x.com", "twitter.com")
         success, feedback, caption, images = await twitter.get_artworks(
             post_url, tags, user, post_mode
         )
     elif "miyoushe.com" in post_url or "bbs.mihoyo" in post_url:
-        if feedback:
+        if instant_feedback:
             await msg.reply_text("正在获取米游社图片...")
         success, feedback, caption, images = await miyoushe.get_artworks(
             post_url, tags, user, post_mode
@@ -210,7 +210,7 @@ async def set_commands(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 async def mark(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if update.message.chat_id not in config.bot_admin_chats:
         return await permission_denied(update.message)
-    success, msg, tmp, tmp = await get_artworks(update.message, feedback=False)
+    success, msg, tmp, tmp = await get_artworks(update.message, instant_feedback=False)
     if success:
         await update.message.reply_text("成功标记为已发送！")
     else:
