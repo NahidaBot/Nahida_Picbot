@@ -114,6 +114,7 @@ async def get_artworks(
             guest=(not post_mode),
         )
         if image_width_height_info:
+            logger.debug(image_width_height_info)
             img.width = image_width_height_info[i]["width"]
             img.height = image_width_height_info[i]["height"]
             msg += f"第{i+1}张图片：{img.width}x{img.height}\n"
@@ -142,7 +143,7 @@ async def get_artworks_width_height(pid: int) -> list | None:
             headers=headers,
         )
         logger.info(response.content)
-        return response.json()
+        return response.json()["body"]
     except Exception as e:
         logger.error("在请求 Pixiv Web API 时发生了一个错误")
         logger.error(e)

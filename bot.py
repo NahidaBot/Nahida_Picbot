@@ -64,7 +64,9 @@ async def post(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await msg.reply_text(feedback, ParseMode.HTML)
 
 
-async def get_artworks(msg: telegram.Message, post_mode: bool = True) -> tuple:
+async def get_artworks(
+    msg: telegram.Message, post_mode: bool = True, feedback: bool = True
+) -> tuple:
     """
     post_mode 为 True 时，发送到频道，否则，直接将消息返回给用户。
     只有发送到频道时才会尝试去重。
@@ -81,15 +83,21 @@ async def get_artworks(msg: telegram.Message, post_mode: bool = True) -> tuple:
     images = None
 
     if ("pixiv.net/artworks/" in post_url) or re.match(r"[1-9]\d*", post_url):
+        if feedback:
+            await msg.reply_text("正在获取 Pixiv 图片...")
         success, feedback, caption, images = await pixiv.get_artworks(
             post_url, tags, user, post_mode
         )
     elif "twitter" in post_url or "x.com" in post_url:
+        if feedback:
+            await msg.reply_text("正在获取 twitter 图片...")
         post_url = post_url.replace("x.com", "twitter.com")
         success, feedback, caption, images = await twitter.get_artworks(
             post_url, tags, user, post_mode
         )
     elif "miyoushe.com" in post_url or "bbs.mihoyo" in post_url:
+        if feedback:
+            await msg.reply_text("正在获取米游社图片...")
         success, feedback, caption, images = await miyoushe.get_artworks(
             post_url, tags, user, post_mode
         )
@@ -111,8 +119,7 @@ async def send_media_group(
             compress_image(file_path, img_compressed)
             file_path = img_compressed
         with open(file_path, "rb") as f:
-            media_group.append(telegram.InputMediaPhoto(
-                f, has_spoiler=image.r18))
+            media_group.append(telegram.InputMediaPhoto(f, has_spoiler=image.r18))
     logger.debug(media_group)
 
     # 防打扰，5分钟内不开启通知音
@@ -159,8 +166,7 @@ async def post_original_pic(
     msg 与 chat_id, images 互斥, 前者用于捕获频道消息并回复原图, 后者直接发送到指定 chat_id, 目前用于获取图片信息
     """
     if not images:
-        images: list[Image] = application.bot_data.pop(
-            msg.forward_from_message_id)
+        images: list[Image] = application.bot_data.pop(msg.forward_from_message_id)
     media_group = []
     for image in images:
         file_path = f"./{image.platform}/{image.filename}"
@@ -204,7 +210,7 @@ async def set_commands(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 async def mark(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if update.message.chat_id not in config.bot_admin_chats:
         return await permission_denied(update.message)
-    success, msg, tmp, tmp = await get_artworks(update.message, True)
+    success, msg, tmp, tmp = await get_artworks(update.message, feedback=False)
     if success:
         await update.message.reply_text("成功标记为已发送！")
     else:
@@ -216,8 +222,7 @@ async def unmark(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if update.message.chat_id not in config.bot_admin_chats:
         return await permission_denied(update.message)
     try:
-        pid = update.message.text.split()[1].strip(
-            "/").split("/")[-1].split("?")[0]
+        pid = update.message.text.split()[1].strip("/").split("/")[-1].split("?")[0]
         unmark_deduplication(pid)
     except Exception as e:
         logger.error(e)
@@ -250,8 +255,7 @@ def main() -> None:
     application.add_handler(CommandHandler("mark_dup", mark))
     application.add_handler(CommandHandler("unmark_dup", unmark))
     application.add_handler(CommandHandler("set_commands", set_commands))
-    application.add_handler(MessageHandler(
-        filters.FORWARDED, get_channel_post))
+    application.add_handler(MessageHandler(filters.FORWARDED, get_channel_post))
 
     # Run the bot until the user presses Ctrl-C
     application.run_polling(allowed_updates=Update.ALL_TYPES)

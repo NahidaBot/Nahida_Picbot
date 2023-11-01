@@ -43,6 +43,8 @@ async def get_post(post_id: int | str) -> dict:
 
 
 async def download(url: str, path: str, filename: str) -> bool:
+    if os.path.exists(path+filename):
+        return True
     try:
         req = requests.get(url)
         with open(path+filename, "wb") as f:
