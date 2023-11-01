@@ -1,4 +1,9 @@
-import requests, json, os, logging, subprocess, re
+import requests
+import json
+import os
+import logging
+import subprocess
+import re
 from time import sleep
 
 from retry import retry
@@ -7,7 +12,7 @@ from sqlalchemy import func
 from telegram import User
 
 from config import config
-from entities import Image
+from entities import Image, ImageTag
 from utils.escaper import html_esc
 from utils import check_deduplication
 from db import session
@@ -50,13 +55,16 @@ async def get_artworks(
         logger.warning("试图发送重复的图片: twitter" + str(pid))
         return (
             False,
-            f"该图片已经由 @{existing_image.username} 于 {str(existing_image.create_time)[:-7]} 发过",
+            f"该图片已经由 @{existing_image.username} 于 {
+                str(existing_image.create_time)[:-7]} 发过",
             None,
             None,
         )
 
     author = tweet_info["author"]
     tweet_content = tweet_info["content"]
+    page_count = len(images)
+    msg = f"""获取成功！\n共有{page_count}张图片\n"""
 
     HASHTAG_PATTERN = r"""#[^\s!@#$%^&*(),.?":{}|<>]+"""
     HASHTAG_PATTERN_SPACE = r"""(?:\s)?#[^\s!@#$%^&*(),.?":{}|<>]+(?:\s)?"""
@@ -64,6 +72,12 @@ async def get_artworks(
     tweet_content = re.sub(HASHTAG_PATTERN_SPACE, "", tweet_content)
 
     tags = set(tags + input_tags)
+    r18 = (tweet_info["possibly_sensitive"] or ("#NSFW" in tags))
+    for tag in input_tags:
+        image_tag = ImageTag(pid=pid, tag=tag)
+        session.add(image_tag)
+    if r18:
+        input_tags.add("#NSFW")
 
     for image in tweet_json:
         if image[0] == 3:
@@ -78,13 +92,13 @@ async def get_artworks(
                 page=image_json["num"],
                 author=author["name"],
                 authorid=author["id"],
-                r18=True if image_json["possibly_sensitive"] else False,
+                r18=r18,
                 extension=extension,
                 rawurl=image[1],
                 thumburl=image[1].replace("orig", "large"),
                 guest=(not post_mode),
                 width=image_json["width"],
-                height=image_json["height"]
+                height=image_json["height"],
             )
             images.append(img)
             r = requests.get(img.rawurl)
@@ -95,14 +109,13 @@ async def get_artworks(
             img.size = os.path.getsize(file_path)
             img.filename = filename
             session.add(img)
+            msg += f"第{image_json["num"]}张图片：{img.width}x{img.height}\n"
     session.commit()
-    page_count = len(images)
-
-    msg = f"""获取成功！\n共有{page_count}张图片\n"""
-    caption = f"""\
-{html_esc(images[0].title)}
-<a href="https://twitter.com/{author["name"]}/status/{pid}">Source</a> by <a href="https://twitter.com/{author["name"]}">twitter @{author["name"]}</a>
-{" ".join(tags)}
-"""
+    caption = (
+        f'{html_esc(images[0].title)}\n'
+        f'<a href="https: //twitter.com/{author["name"]}/status/{
+            pid}">Source</a> by <a href="https: //twitter.com/{author["name"]}">twitter @{author["name"]}</a>\n'
+        f'{" ".join(tags)}\n'
+    )
 
     return (True, msg, caption, images)
