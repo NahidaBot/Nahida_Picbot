@@ -27,8 +27,7 @@ async def get_post(post_id: int | str) -> dict:
     }
     try:
         response = requests.get(
-            f"https://bbs-api.miyoushe.com/post/wapi/getPostFull?post_id={
-                post_id}",
+            f"https://bbs-api.miyoushe.com/post/wapi/getPostFull?post_id={post_id}",
             headers=headers,
         )
         logger.info(response.content)
