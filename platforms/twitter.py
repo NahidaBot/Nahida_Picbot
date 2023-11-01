@@ -55,8 +55,7 @@ async def get_artworks(
         logger.warning("试图发送重复的图片: twitter" + str(pid))
         return (
             False,
-            f"该图片已经由 @{existing_image.username} 于 {
-                str(existing_image.create_time)[:-7]} 发过",
+            f"该图片已经由 @{existing_image.username} 于 {str(existing_image.create_time)[:-7]} 发过",
             None,
             None,
         )
@@ -113,8 +112,7 @@ async def get_artworks(
     session.commit()
     caption = (
         f'{html_esc(images[0].title)}\n'
-        f'<a href="https: //twitter.com/{author["name"]}/status/{
-            pid}">Source</a> by <a href="https: //twitter.com/{author["name"]}">twitter @{author["name"]}</a>\n'
+        f'<a href="https: //twitter.com/{author["name"]}/status/{pid}">Source</a> by <a href="https: //twitter.com/{author["name"]}">twitter @{author["name"]}</a>\n'
         f'{" ".join(tags)}\n'
     )
 

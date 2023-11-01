@@ -79,8 +79,7 @@ async def get_artworks(
         logger.warning(f"试图发送重复的图片: {platform}" + str(id))
         return (
             False,
-            f"该图片已经由 @{existing_image.username} 于 {
-                str(existing_image.create_time)[:-7]} 发过",
+            f"该图片已经由 @{existing_image.username} 于 {str(existing_image.create_time)[:-7]} 发过",
             None,
             None,
         )
@@ -122,8 +121,7 @@ async def get_artworks(
 
     caption = (
         f'<b>{html_esc(images[0].title)}</b>\n'
-        f'<a href="https://www.miyoushe.com/{url_path}/article/{id}">Source</a> by <a href="https://www.miyoushe.com/{
-            url_path}/accountCenter/postList?id={images[0].authorid}">米游社 @{html_esc(images[0].author)}</a>\n'
+        f'<a href="https://www.miyoushe.com/{url_path}/article/{id}">Source</a> by <a href="https://www.miyoushe.com/{url_path}/accountCenter/postList?id={images[0].authorid}">米游社 @{html_esc(images[0].author)}</a>\n'
         f'{" ".join(input_tags)}\n'
     )
 

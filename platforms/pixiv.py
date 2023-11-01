@@ -63,19 +63,16 @@ async def get_artworks(
         logger.warning(f"试图发送重复的图片: {platform}" + str(pid))
         return (
             False,
-            f"该图片已经由 @{existing_image.username} 于 {
-                str(existing_image.create_time)[:-7]} 发过",
+            f"该图片已经由 @{existing_image.username} 于 {str(existing_image.create_time)[:-7]} 发过",
             None,
             None,
         )
 
     image_width_height_info = await get_artworks_width_height(pid)
-    msg = (f'获取成功！\n'
-           f'<b>{illust["title"]}</b>\n'
-           f'共有{page_count}张图片\n')
+    msg = f"获取成功！\n" f'<b>{illust["title"]}</b>\n' f"共有{page_count}张图片\n"
 
     images: list[Image] = []
-    r18: bool = (illust["x_restrict"] == 1 or ("#NSFW" in input_tags))
+    r18: bool = illust["x_restrict"] == 1 or ("#NSFW" in input_tags)
 
     # tag 处理
     if not input_tags:
@@ -125,9 +122,8 @@ async def get_artworks(
     session.commit()
 
     caption = (
-        f'<b>{html_esc(images[0].title)}</b>\n'
-        f'<a href="https: //www.pixiv.net/artworks/{pid}">Source</a> by <a href="https: //www.pixiv.net/users/{
-            images[0].authorid}">Pixiv @{html_esc(images[0].author)}</a>\n'
+        f"<b>{html_esc(images[0].title)}</b>\n"
+        f'<a href="https: //www.pixiv.net/artworks/{pid}">Source</a> by <a href="https: //www.pixiv.net/users/{images[0].authorid}">Pixiv @{html_esc(images[0].author)}</a>\n'
         f'{" ".join(input_tags)}\n'
     )
 
