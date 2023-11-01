@@ -92,7 +92,7 @@ async def get_artworks(
 
     images: list[Image] = []
     for i in range(page_count):
-        filename = f"{image_list[i]["image_id"]}.{image_list[i]["format"]}"
+        filename = f'{image_list[i]["image_id"]}.{image_list[i]["format"]}'
         await download(image_list[i]["url"], download_path, filename)
         image = Image(
             userid=user.id,
