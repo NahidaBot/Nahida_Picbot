@@ -71,7 +71,7 @@ async def get_artworks(
     tweet_content = re.sub(HASHTAG_PATTERN_SPACE, "", tweet_content)
 
     tags = set(tags + input_tags)
-    r18 = (tweet_info["possibly_sensitive"] or ("#NSFW" in tags))
+    r18 = tweet_info["possibly_sensitive"] or ("#NSFW" in tags)
     for tag in input_tags:
         image_tag = ImageTag(pid=pid, tag=tag)
         session.add(image_tag)
@@ -108,10 +108,10 @@ async def get_artworks(
             img.size = os.path.getsize(file_path)
             img.filename = filename
             session.add(img)
-            msg += f"第{image_json["num"]}张图片：{img.width}x{img.height}\n"
+            msg += f'第{image_json["num"]}张图片：{img.width}x{img.height}\n'
     session.commit()
     caption = (
-        f'{html_esc(images[0].title)}\n'
+        f"{html_esc(images[0].title)}\n"
         f'<a href="https://twitter.com/{author["name"]}/status/{pid}">Source</a> by <a href="https://twitter.com/{author["name"]}">twitter @{author["name"]}</a>\n'
         f'{" ".join(tags)}\n'
     )
