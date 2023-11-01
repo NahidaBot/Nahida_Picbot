@@ -123,7 +123,7 @@ async def get_artworks(
 
     caption = (
         f"<b>{html_esc(images[0].title)}</b>\n"
-        f'<a href="https: //www.pixiv.net/artworks/{pid}">Source</a> by <a href="https: //www.pixiv.net/users/{images[0].authorid}">Pixiv @{html_esc(images[0].author)}</a>\n'
+        f'<a href="https://www.pixiv.net/artworks/{pid}">Source</a> by <a href="https://www.pixiv.net/users/{images[0].authorid}">Pixiv @{html_esc(images[0].author)}</a>\n'
         f'{" ".join(input_tags)}\n'
     )
 
@@ -137,7 +137,7 @@ async def get_artworks_width_height(pid: int) -> list | None:
     }
     try:
         response = requests.get(
-            f"https: //www.pixiv.net/ajax/illust/{pid}/pages",
+            f"https://www.pixiv.net/ajax/illust/{pid}/pages",
             cookies=cookies,
             headers=headers,
         )

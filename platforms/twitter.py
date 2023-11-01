@@ -112,7 +112,7 @@ async def get_artworks(
     session.commit()
     caption = (
         f'{html_esc(images[0].title)}\n'
-        f'<a href="https: //twitter.com/{author["name"]}/status/{pid}">Source</a> by <a href="https: //twitter.com/{author["name"]}">twitter @{author["name"]}</a>\n'
+        f'<a href="https://twitter.com/{author["name"]}/status/{pid}">Source</a> by <a href="https://twitter.com/{author["name"]}">twitter @{author["name"]}</a>\n'
         f'{" ".join(tags)}\n'
     )
 
