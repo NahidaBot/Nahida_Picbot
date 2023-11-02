@@ -76,13 +76,15 @@ async def get_artworks(
 
     # tag 处理
     if not input_tags:
-        input_tags = await get_translated_tags(illust["tags"])
-    input_tags: set = set(input_tags)
+        input_tags: list[str] = await get_translated_tags(illust["tags"])
+    tags: set = set()
     for tag in input_tags:
+        tag = "#" + tag.lstrip("#")
         image_tag = ImageTag(pid=pid, tag=tag)
         session.add(image_tag)
+        tags.add(tag)
     if r18:
-        input_tags.add("#NSFW")
+        tags.add("#NSFW")
 
     meta_pages = illust["meta_pages"]
     for i in range(page_count):
@@ -125,7 +127,7 @@ async def get_artworks(
     caption = (
         f"<b>{html_esc(images[0].title)}</b>\n"
         f'<a href="https://www.pixiv.net/artworks/{pid}">Source</a> by <a href="https://www.pixiv.net/users/{images[0].authorid}">Pixiv @{html_esc(images[0].author)}</a>\n'
-        f'{" ".join(input_tags)}\n'
+        f'{" ".join(tags)}\n'
     )
 
     return (True, msg, caption, images)

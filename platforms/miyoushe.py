@@ -86,11 +86,13 @@ async def get_artworks(
         )
 
     tag_game, url_path = get_game(post_info)
-    tags: set = set(input_tags)
-    tags.add(tag_game)
+    tags: set[str] = set()
     for tag in input_tags:
+        tag = '#' + tag.strip('#')
         image_tag = ImageTag(pid=id, tag=tag)
         session.add(image_tag)
+        tags.add(tag)
+    tags.add('#'+tag_game)
 
     images: list[Image] = []
     for i in range(page_count):
@@ -123,7 +125,7 @@ async def get_artworks(
     caption = (
         f'<b>{html_esc(images[0].title)}</b>\n'
         f'<a href="https://www.miyoushe.com/{url_path}/article/{id}">Source</a> by <a href="https://www.miyoushe.com/{url_path}/accountCenter/postList?id={images[0].authorid}">米游社 @{html_esc(images[0].author)}</a>\n'
-        f'{" ".join(input_tags)}\n'
+        f'{" ".join(tags)}\n'
     )
 
     return (True, msg, caption, images)
