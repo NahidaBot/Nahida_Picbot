@@ -16,7 +16,7 @@ from telegram.ext import (
 from telegram.constants import ParseMode
 
 from config import config
-from platforms import pixiv, twitter, miyoushe
+from platforms import pixiv, twitter, miyoushe, bilibili
 from entities import Image
 from utils import compress_image, is_within_size_limit, unmark_deduplication
 
@@ -101,6 +101,12 @@ async def get_artworks(
         success, feedback, caption, images = await miyoushe.get_artworks(
             post_url, tags, user, post_mode
         )
+    elif "bilibili.com" in post_url:
+        if instant_feedback:
+            await msg.reply_text("正在获取 bilibili 图片...")
+        success, feedback, caption, images = await bilibili.get_artworks(
+            post_url, tags, user, post_mode
+        )
     else:
         feedback = "不支持的url"
 
@@ -113,9 +119,9 @@ async def send_media_group(
     reply_msg = None
     media_group = []
     for image in images:
-        file_path = f"./{image.platform}/{image.filename}"
+        file_path = f"./downloads/{image.platform}/{image.filename}"
         if image.size >= MAX_FILE_SIZE or not is_within_size_limit(file_path):
-            img_compressed = "./Pixiv/cache.jpg"
+            img_compressed = "./downloads/img_compressed.jpg"
             compress_image(file_path, img_compressed)
             file_path = img_compressed
         with open(file_path, "rb") as f:
@@ -169,7 +175,7 @@ async def post_original_pic(
         images: list[Image] = application.bot_data.pop(msg.forward_from_message_id)
     media_group = []
     for image in images:
-        file_path = f"./{image.platform}/{image.filename}"
+        file_path = f"./downloads/{image.platform}/{image.filename}"
         with open(file_path, "rb") as f:
             media_group.append(telegram.InputMediaDocument(f))
     if msg:
