@@ -72,7 +72,7 @@ async def get_artworks(
     msg: telegram.Message, post_mode: bool = True, instant_feedback: bool = True
 ) -> tuple:
     """
-    post_mode 为 True 时，发送到频道，否则，直接将消息返回给用户。
+    post_mode 为 True 时, 发送到频道, 否则, 直接将消息返回给用户。
     只有发送到频道时才会尝试去重。
     """
     splited_msg = msg.text.split()[1:]
@@ -134,7 +134,7 @@ async def send_media_group(
             media_group.append(telegram.InputMediaPhoto(f, has_spoiler=image.r18))
     logger.debug(media_group)
 
-    # 防打扰，5分钟内不开启通知音
+    # 防打扰, 5分钟内不开启通知音
     disable_notification = False
     now = datetime.datetime.now()
     interval = now - application.bot_data["last_msg"]
@@ -226,7 +226,7 @@ async def mark(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if success:
         await update.message.reply_text("成功标记为已发送！")
     else:
-        await update.message.reply_text("标记失败，请查看日志！")
+        await update.message.reply_text("标记失败, 请查看日志！")
         logger.error(msg)
 
 
@@ -238,7 +238,7 @@ async def unmark(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         unmark_deduplication(pid)
     except Exception as e:
         logger.error(e)
-        await update.message.reply_text("发生了一个错误，请查看日志！")
+        await update.message.reply_text("发生了一个错误, 请查看日志！")
         return
     await update.message.reply_text("操作成功！")
 

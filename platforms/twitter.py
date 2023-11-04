@@ -31,7 +31,7 @@ async def get_artworks(
     url: str, input_tags: list, user: User, post_mode: bool = True
 ) -> (bool, str, str, list[Image]):
     try:
-        # 要执行的命令，包括 gallery-dl 命令和要下载的图库URL
+        # 要执行的命令, 包括 gallery-dl 命令和要下载的图库URL
         command = ["gallery-dl", url, "-j", "-q"]
 
         # 使用subprocess执行命令

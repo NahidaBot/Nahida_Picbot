@@ -25,8 +25,8 @@ class Image(Base):
     filename: str = Column(String)
     author: str = Column(String)
     authorid: int = Column(Integer)
-    pid: int = Column(String)  # 对于 twitter，是 tweet id
-    extension: str = Column(String)  # 扩展名
+    pid: int = Column(String)  # 对于 twitter, 是 tweet id, 其他平台类似
+    extension: str = Column(String)  # 扩展名, 目前未使用
     rawurl: str = Column(String)
     thumburl: str = Column(String)
     r18: bool = Column(Boolean)
