@@ -1,5 +1,6 @@
-import logging
 import re
+import os
+import logging
 import datetime
 
 # from db import session
@@ -23,6 +24,9 @@ from utils import compress_image, is_within_size_limit, unmark_deduplication
 MAX_FILE_SIZE = 10 * 1024 * 1024
 
 logger = logging.getLogger(__name__)
+
+if not os.path.exists("./downloads/"):
+    os.mkdir("./downloads/")
 
 if config.debug:
     logging.basicConfig(
@@ -95,7 +99,9 @@ async def get_artworks(
         success, feedback, caption, images = await twitter.get_artworks(
             post_url, tags, user, post_mode
         )
-    elif "miyoushe.com" in post_url or "bbs.mihoyo" in post_url or "hoyolab" in post_url:
+    elif (
+        "miyoushe.com" in post_url or "bbs.mihoyo" in post_url or "hoyolab" in post_url
+    ):
         if instant_feedback:
             await msg.reply_text("正在获取米游社图片...")
         success, feedback, caption, images = await miyoushe.get_artworks(
