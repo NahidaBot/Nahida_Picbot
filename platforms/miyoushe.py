@@ -101,7 +101,7 @@ async def get_artworks(
     images: list[Image] = []
     for i in range(page_count):
         if is_global:
-            filename: str = image_list[i]["url"].split('/')[-1]
+            filename: str = image_list[i]["url"].split("/")[-1]
         else:
             filename = f'{image_list[i]["image_id"]}.{image_list[i]["format"]}'
         await download(image_list[i]["url"], download_path, filename)
@@ -129,10 +129,11 @@ async def get_artworks(
         msg += f"第{i+1}张图片：{image.width}x{image.height}\n"
     session.commit()
 
-
     if is_global:
         article_url = f"https://www.hoyolab.com/article/{id}"
-        author_url = f"https://www.hoyolab.com/accountCenter?id={post_json["user"]["uid"]}"
+        author_url = (
+            f"https://www.hoyolab.com/accountCenter?id={post_json['user']['uid']}"
+        )
     else:
         article_url = f"https://www.miyoushe.com/{url_path}/article/{id}"
         author_url = f"https://www.miyoushe.com/{url_path}/accountCenter/postList?id={images[0].authorid}"
