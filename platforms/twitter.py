@@ -20,7 +20,7 @@ from db import session
 logger = logging.getLogger(__name__)
 
 
-platform = "Pixiv"
+platform = "twitter"
 download_path = f"./downloads/{platform}/"
 
 if not os.path.exists(download_path):
