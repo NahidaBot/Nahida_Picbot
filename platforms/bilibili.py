@@ -94,8 +94,8 @@ async def get_artworks(
 
     images: list[Image] = []
     for i in range(page_count):
-        filename: str = image_list[i]["url"].split("/")[-1]
-        extension: str = filename.split(".")[-1]
+        extension: str = image_list[i]["url"].split("/")[-1].split(".")[-1]
+        filename: str = f"{id}_{i+1}.{extension}"
         size = int(image_list[i]["size"] * 1024)
         await download(image_list[i]["url"], download_path, filename)
         image = Image(

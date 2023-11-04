@@ -13,7 +13,7 @@ from db import session
 logger = logging.getLogger(__name__)
 
 platform = "miyoushe"
-download_path = f"./{platform}/"
+download_path = f"./downloads/{platform}/"
 
 
 if not os.path.exists(download_path):
@@ -101,9 +101,10 @@ async def get_artworks(
     images: list[Image] = []
     for i in range(page_count):
         if is_global:
-            filename: str = image_list[i]["url"].split("/")[-1]
+            extension: str = image_list[i]["url"].split("/")[-1].split(".")[-1]
         else:
-            filename = f'{image_list[i]["image_id"]}.{image_list[i]["format"]}'
+            extension = image_list[i]["format"]
+        filename: str = f"{id}_{i+1}.{extension}"
         await download(image_list[i]["url"], download_path, filename)
         image = Image(
             userid=user.id,
@@ -117,7 +118,7 @@ async def get_artworks(
             author=post_json["user"]["nickname"],
             authorid=post_json["user"]["uid"],
             r18=r18,
-            extension=image_list[i]["format"],
+            extension=extension,
             rawurl=image_list[i]["url"],
             thumburl=image_list[i]["url"] + x_oss_process,
             guest=(not post_mode),
