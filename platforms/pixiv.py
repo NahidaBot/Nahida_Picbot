@@ -95,7 +95,7 @@ async def get_artworks(
             rawurl: str = illust["meta_single_page"]["original_image_url"]
         api.download(rawurl, path=download_path)
         filename = rawurl.split("/")[-1]
-        file_path = f"./{platform}/{filename}"
+        file_path = f"./downloads/{platform}/{filename}"
         file_size = os.path.getsize(file_path)
         img = Image(
             userid=user.id,
