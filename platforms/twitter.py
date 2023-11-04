@@ -19,8 +19,12 @@ from db import session
 
 logger = logging.getLogger(__name__)
 
-if not os.path.exists("./twitter/"):
-    os.mkdir("./twitter/")
+
+platform = "Pixiv"
+download_path = f"./downloads/{platform}/"
+
+if not os.path.exists(download_path):
+    os.mkdir(download_path)
 
 
 async def get_artworks(
@@ -74,7 +78,7 @@ async def get_artworks(
     r18 = tweet_info["possibly_sensitive"] or ("#NSFW" in tags)
     tags = set()
     for tag in input_tags:
-        tags.add('#'+tag.lstrip('#'))
+        tags.add("#" + tag.lstrip("#"))
         image_tag = ImageTag(pid=pid, tag=tag)
         session.add(image_tag)
     if r18:
@@ -104,7 +108,7 @@ async def get_artworks(
             images.append(img)
             r = requests.get(img.rawurl)
             filename = f"{img.pid}_{img.page}.{extension}"
-            file_path = f"./twitter/{filename}"
+            file_path = download_path+filename
             with open(file_path, "wb") as f:
                 f.write(r.content)
             img.size = os.path.getsize(file_path)
@@ -115,7 +119,8 @@ async def get_artworks(
     caption = (
         f"{html_esc(images[0].title)}\n"
         f'<a href="https://twitter.com/{author["name"]}/status/{pid}">Source</a> by <a href="https://twitter.com/{author["name"]}">twitter @{author["name"]}</a>\n'
-        f'{" ".join(tags)}\n'
     )
+    if tags:
+        caption += f'{" ".join(tags)}\n'
 
     return (True, msg, caption, images)

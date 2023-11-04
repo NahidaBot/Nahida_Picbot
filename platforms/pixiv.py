@@ -19,9 +19,10 @@ from utils import check_deduplication
 from db import session
 
 platform = "Pixiv"
+download_path = f"./downloads/{platform}/"
 
-if not os.path.exists(f"./{platform}/"):
-    os.mkdir(f"./{platform}/")
+if not os.path.exists(download_path):
+    os.mkdir(download_path)
 
 api = AppPixivAPI()
 api.set_accept_language("zh-cn")
@@ -92,7 +93,7 @@ async def get_artworks(
             rawurl: str = meta_pages[i]["image_urls"]["original"]
         else:
             rawurl: str = illust["meta_single_page"]["original_image_url"]
-        api.download(rawurl, path=f"./{platform}/")
+        api.download(rawurl, path=download_path)
         filename = rawurl.split("/")[-1]
         file_path = f"./{platform}/{filename}"
         file_size = os.path.getsize(file_path)
