@@ -62,7 +62,7 @@ async def get_artworks(
 
     author = tweet_info["author"]
     tweet_content = tweet_info["content"]
-    page_count = len(images)
+    page_count = tweet_info["count"]
     msg = f"""获取成功！\n共有{page_count}张图片\n"""
 
     HASHTAG_PATTERN = r"""#[^\s!@#$%^&*(),.?":{}|<>]+"""
