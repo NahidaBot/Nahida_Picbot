@@ -148,6 +148,7 @@ async def send_media_group(
         caption=caption,
         parse_mode=ParseMode.HTML,
         disable_notification=disable_notification,
+        read_timeout=20,
     )
     logger.debug(reply_msg)
     reply_msg = reply_msg[0]
