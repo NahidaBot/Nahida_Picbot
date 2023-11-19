@@ -175,9 +175,9 @@ async def post_original_pic(
         with open(file_path, "rb") as f:
             media_group.append(telegram.InputMediaDocument(f))
     if msg:
-        await msg.reply_media_group(media=media_group)
+        await msg.reply_media_group(media=media_group, write_timeout=60)
     else:
-        await bot.send_media_group(chat_id, media_group)
+        await bot.send_media_group(chat_id, media_group, write_timeout=60)
 
 
 async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
