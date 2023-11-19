@@ -152,21 +152,11 @@ async def send_media_group(
     logger.debug(reply_msg)
     reply_msg = reply_msg[0]
 
-    if reply_msg and chat_id == config.bot_channel:
-        # 发原图
-        application.bot_data[reply_msg.id] = images
-        logger.info(application.bot_data[reply_msg.id])
+    await post_original_pic(chat_id=chat_id, images=images)
 
     msg += f"\n发送成功！"
     return msg
 
-
-async def get_channel_post(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    # 匹配 bot_data, 匹配到则发送原图, 否则忽略该消息
-    logger.info(context.bot_data)
-    msg = update.message
-    if msg.forward_from_message_id and msg.forward_from_message_id in context.bot_data:
-        await post_original_pic(msg)
 
 
 async def post_original_pic(
@@ -267,7 +257,7 @@ def main() -> None:
     application.add_handler(CommandHandler("mark_dup", mark))
     application.add_handler(CommandHandler("unmark_dup", unmark))
     application.add_handler(CommandHandler("set_commands", set_commands))
-    application.add_handler(MessageHandler(filters.FORWARDED, get_channel_post))
+    # application.add_handler(MessageHandler(filters.FORWARDED, get_channel_post))
 
     # Run the bot until the user presses Ctrl-C
     application.run_polling(allowed_updates=Update.ALL_TYPES)
