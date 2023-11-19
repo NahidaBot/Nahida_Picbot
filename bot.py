@@ -131,7 +131,7 @@ async def send_media_group(
             compress_image(file_path, img_compressed)
             file_path = img_compressed
         with open(file_path, "rb") as f:
-            media_group.append(telegram.InputMediaPhoto(f, has_spoiler=image.r18))
+            media_group.append(telegram.InputMediaPhoto(f))
     logger.debug(media_group)
 
     # 防打扰, 5分钟内不开启通知音
