@@ -37,9 +37,10 @@ def refresh_token() -> None:
 
 
 @retry(tries=3)
-def get_illust(pid: int | str) -> None:
+def get_illust(pid: int | str) -> dict:
     try:
         illust = api.illust_detail(pid)["illust"]
+        logger.debug(illust)
         return illust
     except Exception as e:
         logger.error("获取失败, 可能是 Pixiv_refresh_token 过期, 正在尝试刷新")
