@@ -77,8 +77,8 @@ async def get_artworks(
     r18: bool = illust["x_restrict"] == 1 or ("#NSFW" in input_tags)
 
     # tag 处理
-    if not input_tags:
-        input_tags: list[str] = await get_translated_tags(illust["tags"])
+    # if not input_tags:
+    #     input_tags: list[str] = await get_translated_tags(illust["tags"])
     tags: set = set()
     for tag in input_tags:
         tag = "#" + tag.lstrip("#")
@@ -131,8 +131,9 @@ async def get_artworks(
     caption = (
         f"<b>{html_esc(images[0].title)}</b>\n"
         f'<a href="https://www.pixiv.net/artworks/{pid}">Source</a> by <a href="https://www.pixiv.net/users/{images[0].authorid}">Pixiv @{html_esc(images[0].author)}</a>\n'
-        f'{" ".join(tags)}\n'
     )
+    if input_tags:
+        caption += f'{" ".join(tags)}\n'
 
     return (True, msg, caption, images)
 
