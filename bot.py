@@ -3,7 +3,7 @@ import os
 import logging
 import datetime
 
-# from db import session
+from db import session
 
 import telegram
 from telegram import ForceReply, Update, BotCommand
@@ -59,10 +59,11 @@ async def post(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     if update.message.chat_id not in config.bot_admin_chats:
         return await permission_denied(update.message)
-
+    
     success, feedback, caption, images = await get_artworks(update.message)
 
     if success:
+        await update.message.reply_chat_action("upload_photo")
         caption += config.txt_msg_tail
         feedback = await send_media_group(feedback, caption, images)
     await msg.reply_text(feedback, ParseMode.HTML)
@@ -189,8 +190,10 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         update.message, post_mode=False
     )
     if success:
+        await update.message.reply_chat_action("upload_photo")
         caption += config.txt_msg_tail
         feedback = await send_media_group(feedback, caption, images, msg.chat_id)
+    await update.message.reply_chat_action("upload_document")
     await post_original_pic(chat_id=msg.chat_id, images=images)
 
 
@@ -203,6 +206,7 @@ async def set_commands(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         BotCommand("echo", "/echo url #tag1 #tag2 返回预览"),
         BotCommand("mark_dup", "(admin) /mark_dup url 标记图片已被发送过"),
         BotCommand("unmark_dup", "(admin) /unmark_dup url 反标记该图片信息"),
+        BotCommand("repost_orig", "(admin) /repost_orig 在频道评论区回复"),
         BotCommand("ping", "hello"),
     ]
 
@@ -233,6 +237,35 @@ async def unmark(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
     await update.message.reply_text("操作成功！")
 
+async def repost_orig(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.message.chat_id not in config.bot_admin_chats:
+        return await permission_denied(update.message)
+    try :
+        logger.debug(update.message.reply_to_message)
+        logger.debug(update.message.reply_to_message.entities)
+        entities = update.message.reply_to_message.caption_entities
+        urls: list[str] = []
+        for entity in entities:
+            if entity.type == "text_link":
+                urls.append(entity.url)
+        if len(urls) == 0:
+            raise AttributeError(name="没有获取到 url")
+    except Exception as e:
+        return await update.message.reply_text("获取失败，请在对应消息的评论区回复该命令！")
+    
+    await update.message.reply_chat_action("upload_document")
+
+    pid = urls[0].split('/')[-1]
+    images = session.query(Image).filter_by(pid=pid, guest=False).order_by(Image.page).all()
+    media_group = []
+    for image in images:
+        file_path = f"./downloads/{image.platform}/{image.filename}"
+        with open(file_path, "rb") as f:
+            media_group.append(telegram.InputMediaDocument(f))
+    await update.message.reply_to_message.reply_media_group(media_group, write_timeout=60, read_timeout=20)
+    await update.message.delete(read_timeout=20)
+
+
 
 async def permission_denied(message: telegram.Message) -> None:
     # TODO 鉴权这块可以改成装饰器实现
@@ -258,6 +291,7 @@ def main() -> None:
     application.add_handler(CommandHandler("mark_dup", mark))
     application.add_handler(CommandHandler("unmark_dup", unmark))
     application.add_handler(CommandHandler("set_commands", set_commands))
+    application.add_handler(CommandHandler("repost_orig", repost_orig))
     # application.add_handler(MessageHandler(filters.FORWARDED, get_channel_post))
 
     # Run the bot until the user presses Ctrl-C
