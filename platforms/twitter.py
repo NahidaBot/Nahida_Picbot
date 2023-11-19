@@ -81,8 +81,8 @@ async def get_artworks(
         tags.add("#" + tag.lstrip("#"))
         image_tag = ImageTag(pid=pid, tag=tag)
         session.add(image_tag)
-    if r18:
-        tags.add("#NSFW")
+    # if r18:
+    #     tags.add("#NSFW")
 
     for image in tweet_json:
         if image[0] == 3:
