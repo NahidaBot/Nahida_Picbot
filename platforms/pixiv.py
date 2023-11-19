@@ -87,6 +87,8 @@ async def get_artworks(
         tags.add(tag)
     if r18:
         tags.add("#NSFW")
+    if illust["illust_ai_type"]:
+        tags.add("AI")
 
     meta_pages = illust["meta_pages"]
     for i in range(page_count):
