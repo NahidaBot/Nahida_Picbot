@@ -1,10 +1,12 @@
 import re
 import os
+import time
 import logging
 import datetime
 
 from db import session
 
+import asyncio
 import telegram
 from telegram import ForceReply, Update, BotCommand
 from telegram.ext import (
@@ -59,7 +61,7 @@ async def post(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     if update.message.chat_id not in config.bot_admin_chats:
         return await permission_denied(update.message)
-    
+
     success, feedback, caption, images = await get_artworks(update.message)
 
     if success:
@@ -248,10 +250,14 @@ async def unmark(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
     await update.message.reply_text("操作成功！")
 
+
 async def repost_orig(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if update.message.chat_id not in config.bot_admin_chats:
+    sender_id = update.message.from_user.id
+    if (update.message.chat_id not in config.bot_admin_chats) and (
+        sender_id not in context.bot_data["admins"]
+    ):
         return await permission_denied(update.message)
-    try :
+    try:
         logger.debug(update.message.reply_to_message)
         logger.debug(update.message.reply_to_message.entities)
         entities = update.message.reply_to_message.caption_entities
@@ -263,18 +269,37 @@ async def repost_orig(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
             raise AttributeError(name="没有获取到 url")
     except Exception as e:
         return await update.message.reply_text("获取失败，请在对应消息的评论区回复该命令！")
-    
+
     await update.message.reply_chat_action("upload_document")
 
-    pid = urls[0].split('/')[-1]
-    images = session.query(Image).filter_by(pid=pid, guest=False).order_by(Image.page).all()
+    pid = urls[0].split("/")[-1]
+    images = (
+        session.query(Image).filter_by(pid=pid, guest=False).order_by(Image.page).all()
+    )
     media_group = []
     for image in images:
         file_path = f"./downloads/{image.platform}/{image.filename}"
         with open(file_path, "rb") as f:
             media_group.append(telegram.InputMediaDocument(f))
-    await update.message.reply_to_message.reply_media_group(media_group, write_timeout=60, read_timeout=20)
+    await update.message.reply_to_message.reply_media_group(
+        media_group, write_timeout=60, read_timeout=20
+    )
     await update.message.delete(read_timeout=20)
+
+
+async def get_admins(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    chat_id = update.message.chat_id
+    await _get_admins(chat_id)
+    msg_posted = await update.message.reply_text("True.")
+    time.sleep(3)
+    await update.message.delete()
+    await msg_posted.delete()
+
+
+async def _get_admins(chat_id: int | str) -> None:
+    admins = [admin.user.id for admin in await bot.get_chat_administrators(chat_id)]
+    logger.debug(admins)
+    application.bot_data["admins"] = admins
 
 
 
@@ -282,12 +307,18 @@ async def permission_denied(message: telegram.Message) -> None:
     # TODO 鉴权这块可以改成装饰器实现
     await message.reply_text("permission denied")
 
+# 定义一个异步的初始化函数
+async def on_start(application: Application):
+    # 在这里调用 _get_admins 函数
+    await _get_admins(config.bot_channel_comment_group)
+    # 这里还可以添加其他在机器人启动前需要执行的代码
 
 def main() -> None:
     """Start the bot."""
     # Create the Application and pass it your bot's token.
     global application
-    application = Application.builder().token(config.bot_token).build()
+    application = Application.builder().token(config.bot_token).post_init(on_start).build()
+
 
     global bot
     bot = application.bot
