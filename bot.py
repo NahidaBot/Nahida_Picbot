@@ -253,8 +253,13 @@ async def unmark(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def repost_orig(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     sender_id = update.message.from_user.id
-    if (update.message.chat_id not in config.bot_admin_chats) and (
-        sender_id not in context.bot_data["admins"]
+    if not (
+        (update.message.chat_id in config.bot_admin_chats)
+        or (sender_id in context.bot_data["admins"])
+        or (
+            update.message.sender_chat
+            and update.message.sender_chat.id == config.bot_channel_comment_group
+        )
     ):
         return await permission_denied(update.message)
     try:
@@ -302,10 +307,10 @@ async def _get_admins(chat_id: int | str) -> None:
     application.bot_data["admins"] = admins
 
 
-
 async def permission_denied(message: telegram.Message) -> None:
     # TODO 鉴权这块可以改成装饰器实现
     await message.reply_text("permission denied")
+
 
 # 定义一个异步的初始化函数
 async def on_start(application: Application):
@@ -313,12 +318,14 @@ async def on_start(application: Application):
     await _get_admins(config.bot_channel_comment_group)
     # 这里还可以添加其他在机器人启动前需要执行的代码
 
+
 def main() -> None:
     """Start the bot."""
     # Create the Application and pass it your bot's token.
     global application
-    application = Application.builder().token(config.bot_token).post_init(on_start).build()
-
+    application = (
+        Application.builder().token(config.bot_token).post_init(on_start).build()
+    )
 
     global bot
     bot = application.bot
@@ -334,6 +341,7 @@ def main() -> None:
     application.add_handler(CommandHandler("unmark_dup", unmark))
     application.add_handler(CommandHandler("set_commands", set_commands))
     application.add_handler(CommandHandler("repost_orig", repost_orig))
+    application.add_handler(CommandHandler("get_admins", get_admins))
     application.add_handler(MessageHandler(filters.FORWARDED, get_channel_post))
 
     # Run the bot until the user presses Ctrl-C
