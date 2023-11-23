@@ -1,5 +1,6 @@
 import re
 import os
+import json
 import time
 import logging
 import datetime
@@ -8,7 +9,7 @@ from db import session
 
 import asyncio
 import telegram
-from telegram import ForceReply, Update, BotCommand
+from telegram import ForceReply, Update, BotCommand, Message
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -29,6 +30,8 @@ logger = logging.getLogger(__name__)
 
 if not os.path.exists("./downloads/"):
     os.mkdir("./downloads/")
+
+restart_data = os.path.join(os.getcwd(), "restart.json")
 
 if config.debug:
     logging.basicConfig(
@@ -317,6 +320,22 @@ async def on_start(application: Application):
     # 在这里调用 _get_admins 函数
     await _get_admins(config.bot_channel_comment_group)
     # 这里还可以添加其他在机器人启动前需要执行的代码
+    await restore_from_restart()
+
+
+async def restart(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    msg = await update.message.reply_text("exiting...")
+    with open(restart_data, "w", encoding="utf-8") as f:
+        f.write(msg.to_json())
+    application.stop_running()
+
+
+async def restore_from_restart() -> None:
+    if os.path.exists(restart_data):
+        with open(restart_data) as f:
+            msg: Message = Message.de_json(json.load(f), bot)
+            await msg.edit_text("restart success")
+        os.remove(restart_data)
 
 
 def main() -> None:
@@ -343,6 +362,7 @@ def main() -> None:
     application.add_handler(CommandHandler("repost_orig", repost_orig))
     application.add_handler(CommandHandler("get_admins", get_admins))
     application.add_handler(MessageHandler(filters.FORWARDED, get_channel_post))
+    application.add_handler(CommandHandler("restart", restart))
 
     # Run the bot until the user presses Ctrl-C
     application.run_polling(allowed_updates=Update.ALL_TYPES)
