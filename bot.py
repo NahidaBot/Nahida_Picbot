@@ -1,12 +1,16 @@
 import re
 import os
+import json
+import time
 import logging
 import datetime
+import subprocess
 
 from db import session
 
+import asyncio
 import telegram
-from telegram import ForceReply, Update, BotCommand
+from telegram import ForceReply, Update, BotCommand, Message
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -27,6 +31,8 @@ logger = logging.getLogger(__name__)
 
 if not os.path.exists("./downloads/"):
     os.mkdir("./downloads/")
+
+restart_data = os.path.join(os.getcwd(), "restart.json")
 
 if config.debug:
     logging.basicConfig(
@@ -59,7 +65,7 @@ async def post(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     if update.message.chat_id not in config.bot_admin_chats:
         return await permission_denied(update.message)
-    
+
     success, feedback, caption, images = await get_artworks(update.message)
 
     if success:
@@ -160,7 +166,6 @@ async def send_media_group(
     return msg
 
 
-
 async def post_original_pic(
     msg: telegram.Message = None,
     chat_id: int | str = config.bot_channel,
@@ -237,46 +242,64 @@ async def unmark(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
     await update.message.reply_text("操作成功！")
 
-async def repost_orig(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if update.message.chat_id not in config.bot_admin_chats:
-        return await permission_denied(update.message)
-    try :
-        logger.debug(update.message.reply_to_message)
-        logger.debug(update.message.reply_to_message.entities)
-        entities = update.message.reply_to_message.caption_entities
-        urls: list[str] = []
-        for entity in entities:
-            if entity.type == "text_link":
-                urls.append(entity.url)
-        if len(urls) == 0:
-            raise AttributeError(name="没有获取到 url")
-    except Exception as e:
-        return await update.message.reply_text("获取失败，请在对应消息的评论区回复该命令！")
-    
-    await update.message.reply_chat_action("upload_document")
-
-    pid = urls[0].split('/')[-1]
-    images = session.query(Image).filter_by(pid=pid, guest=False).order_by(Image.page).all()
-    media_group = []
-    for image in images:
-        file_path = f"./downloads/{image.platform}/{image.filename}"
-        with open(file_path, "rb") as f:
-            media_group.append(telegram.InputMediaDocument(f))
-    await update.message.reply_to_message.reply_media_group(media_group, write_timeout=60, read_timeout=20)
-    await update.message.delete(read_timeout=20)
-
-
 
 async def permission_denied(message: telegram.Message) -> None:
     # TODO 鉴权这块可以改成装饰器实现
     await message.reply_text("permission denied")
 
 
+# 定义一个异步的初始化函数
+async def on_start(application: Application):
+    await restore_from_restart()
+
+
+async def restart(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.message.chat_id not in config.bot_admin_chats:
+        return await permission_denied(update.message)
+    msg = await update.message.reply_text("Exiting...")
+    with open(restart_data, "w", encoding="utf-8") as f:
+        f.write(msg.to_json())
+    application.stop_running()
+
+
+async def restore_from_restart() -> None:
+    if os.path.exists(restart_data):
+        with open(restart_data) as f:
+            msg: Message = Message.de_json(json.load(f), bot)
+            await msg.edit_text("Restart success")
+        os.remove(restart_data)
+
+
+async def update(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.message.chat_id not in config.bot_admin_chats:
+        return await permission_denied(update.message)
+    try:
+        # 要执行的命令, 包括 gallery-dl 命令和要下载的图库URL
+        command = ["git", "pull"]
+
+        # 使用subprocess执行命令
+        result: subprocess.CompletedProcess = subprocess.run(
+            command,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        logger.debug(result.stdout)
+        logger.debug("更新成功！")
+    except subprocess.CalledProcessError as e:
+        logger.error("更新出错:" + e)
+        return await update.message.reply_text("Update failed! Please check logs.")
+    await restart(update, context, "Update success, restarting...")
+
+
 def main() -> None:
     """Start the bot."""
     # Create the Application and pass it your bot's token.
     global application
-    application = Application.builder().token(config.bot_token).build()
+    application = (
+        Application.builder().token(config.bot_token).post_init(on_start).build()
+    )
 
     global bot
     bot = application.bot
@@ -291,8 +314,7 @@ def main() -> None:
     application.add_handler(CommandHandler("mark_dup", mark))
     application.add_handler(CommandHandler("unmark_dup", unmark))
     application.add_handler(CommandHandler("set_commands", set_commands))
-    application.add_handler(CommandHandler("repost_orig", repost_orig))
-    # application.add_handler(MessageHandler(filters.FORWARDED, get_channel_post))
+    application.add_handler(CommandHandler("restart", restart))
 
     # Run the bot until the user presses Ctrl-C
     application.run_polling(allowed_updates=Update.ALL_TYPES)

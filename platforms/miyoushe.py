@@ -164,6 +164,9 @@ def get_game(post_info: dict) -> tuple[str]:
         case 4:
             name = "未定事件簿"
             url_path = "wd"
+        case 5:
+            name = "大别野"
+            url_path = "dby"
         case 6:
             name = "星铁"
             url_path = "sr"
