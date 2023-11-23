@@ -4,6 +4,7 @@ import json
 import time
 import logging
 import datetime
+import subprocess
 
 from db import session
 
@@ -324,7 +325,9 @@ async def on_start(application: Application):
 
 
 async def restart(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    msg = await update.message.reply_text("exiting...")
+    if update.message.chat_id not in config.bot_admin_chats:
+        return await permission_denied(update.message)
+    msg = await update.message.reply_text("Exiting...")
     with open(restart_data, "w", encoding="utf-8") as f:
         f.write(msg.to_json())
     application.stop_running()
@@ -334,9 +337,30 @@ async def restore_from_restart() -> None:
     if os.path.exists(restart_data):
         with open(restart_data) as f:
             msg: Message = Message.de_json(json.load(f), bot)
-            await msg.edit_text("restart success")
+            await msg.edit_text("Restart success")
         os.remove(restart_data)
 
+async def update(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.message.chat_id not in config.bot_admin_chats:
+        return await permission_denied(update.message)
+    try:
+        # 要执行的命令, 包括 gallery-dl 命令和要下载的图库URL
+        command = ["git", "pull"]
+
+        # 使用subprocess执行命令
+        result: subprocess.CompletedProcess = subprocess.run(
+            command,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        logger.debug(result.stdout)
+        logger.debug("更新成功！")
+    except subprocess.CalledProcessError as e:
+        logger.error("更新出错:" + e)
+        return await update.message.reply_text("Update failed! Please check logs.")
+    await restart(update, context, "Update success, restarting...")
 
 def main() -> None:
     """Start the bot."""
@@ -361,7 +385,12 @@ def main() -> None:
     application.add_handler(CommandHandler("set_commands", set_commands))
     application.add_handler(CommandHandler("repost_orig", repost_orig))
     application.add_handler(CommandHandler("get_admins", get_admins))
-    application.add_handler(MessageHandler(filters.FORWARDED, get_channel_post))
+    application.add_handler(
+        MessageHandler(
+            filters.FORWARDED & filters.PHOTO & filters.User(777000),
+            get_channel_post,
+        )
+    )
     application.add_handler(CommandHandler("restart", restart))
 
     # Run the bot until the user presses Ctrl-C
