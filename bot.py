@@ -20,6 +20,9 @@ from telegram.ext import (
 )
 from telegram.constants import ParseMode
 
+if not os.path.exists("./downloads/"):
+    os.mkdir("./downloads/")
+
 from config import config
 from platforms import pixiv, twitter, miyoushe, bilibili
 from entities import Image
@@ -28,9 +31,6 @@ from utils import compress_image, is_within_size_limit, unmark_deduplication
 MAX_FILE_SIZE = 10 * 1024 * 1024
 
 logger = logging.getLogger(__name__)
-
-if not os.path.exists("./downloads/"):
-    os.mkdir("./downloads/")
 
 restart_data = os.path.join(os.getcwd(), "restart.json")
 
@@ -281,7 +281,7 @@ async def repost_orig(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
     await update.message.reply_chat_action("upload_document")
 
-    pid = urls[0].split("/")[-1]
+    pid = urls[0].strip("/").split("/")[-1]
     images = (
         session.query(Image).filter_by(pid=pid, guest=False).order_by(Image.page).all()
     )
