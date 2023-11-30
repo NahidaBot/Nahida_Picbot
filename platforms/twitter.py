@@ -75,7 +75,7 @@ async def get_artworks(
     tweet_content = re.sub(HASHTAG_PATTERN_SPACE, "", tweet_content)
 
     input_tags: set[str] = set(tags + input_tags)
-    r18 = tweet_info["possibly_sensitive"] or ("#NSFW" in tags)
+    r18 = tweet_info["sensitive"] or ("#NSFW" in tags)
     tags = set()
     for tag in input_tags:
         tags.add("#" + tag.lstrip("#"))
