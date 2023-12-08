@@ -67,13 +67,13 @@ async def post(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if update.message.chat_id not in config.bot_admin_chats:
         return await permission_denied(update.message)
 
-    success, feedback, caption, images = await get_artworks(update.message)
+    success, feedback, caption, images, hint_msg = await get_artworks(update.message)
 
     if success:
         await update.message.reply_chat_action("upload_photo")
         caption += config.txt_msg_tail
         feedback = await send_media_group(feedback, caption, images)
-    await msg.reply_text(feedback, ParseMode.HTML)
+    await hint_msg.edit_text(feedback, ParseMode.HTML)
 
 
 async def get_artworks(
@@ -92,16 +92,17 @@ async def get_artworks(
     caption = ""
     feedback = ""
     images = None
+    hint_msg: Message = None
 
     if ("pixiv.net/artworks/" in post_url) or re.match(r"[1-9]\d*", post_url):
         if instant_feedback:
-            await msg.reply_text("正在获取 Pixiv 图片...")
+            hint_msg = await msg.reply_text("正在获取 Pixiv 图片...")
         success, feedback, caption, images = await pixiv.get_artworks(
             post_url, tags, user, post_mode
         )
     elif "twitter" in post_url or "x.com" in post_url:
         if instant_feedback:
-            await msg.reply_text("正在获取 twitter 图片...")
+            hint_msg = await msg.reply_text("正在获取 twitter 图片...")
         post_url = post_url.replace("x.com", "twitter.com")
         success, feedback, caption, images = await twitter.get_artworks(
             post_url, tags, user, post_mode
@@ -110,20 +111,20 @@ async def get_artworks(
         "miyoushe.com" in post_url or "bbs.mihoyo" in post_url or "hoyolab" in post_url
     ):
         if instant_feedback:
-            await msg.reply_text("正在获取米游社图片...")
+            hint_msg = await msg.reply_text("正在获取米游社图片...")
         success, feedback, caption, images = await miyoushe.get_artworks(
             post_url, tags, user, post_mode
         )
     elif "bilibili.com" in post_url:
         if instant_feedback:
-            await msg.reply_text("正在获取 bilibili 图片...")
+            hint_msg = await msg.reply_text("正在获取 bilibili 图片...")
         success, feedback, caption, images = await bilibili.get_artworks(
             post_url, tags, user, post_mode
         )
     else:
         feedback = "不支持的url"
 
-    return (success, feedback, caption, images)
+    return (success, feedback, caption, images, hint_msg)
 
 
 async def send_media_group(
@@ -154,7 +155,7 @@ async def send_media_group(
 
     batch_size = 9
     page = 1
-    total_page = math.ceil(len(media_group)/batch_size)
+    total_page = math.ceil(len(media_group) / batch_size)
     while media_group:
         page_count = ""
         if total_page > 1:
@@ -163,7 +164,7 @@ async def send_media_group(
         reply_msg = await bot.send_media_group(
             chat_id,
             media_group[:batch_size],
-            caption=page_count+caption,
+            caption=page_count + caption,
             parse_mode=ParseMode.HTML,
             disable_notification=disable_notification,
             read_timeout=60,
@@ -172,7 +173,11 @@ async def send_media_group(
         logger.debug(reply_msg)
         reply_msg = reply_msg[0]
 
-        if reply_msg and (chat_id == config.bot_channel) or (chat_id == config.bot_enable_ai_redirect_channel):
+        if (
+            reply_msg
+            and (chat_id == config.bot_channel)
+            or (chat_id == config.bot_enable_ai_redirect_channel)
+        ):
             # 发原图
             application.bot_data[reply_msg.id] = images[:batch_size]
             logger.info(application.bot_data[reply_msg.id])
@@ -208,16 +213,20 @@ async def post_original_pic(
         with open(file_path, "rb") as f:
             media_group.append(telegram.InputMediaDocument(f))
     if msg:
-        await msg.reply_media_group(media=media_group, write_timeout=60, read_timeout=60)
+        await msg.reply_media_group(
+            media=media_group, write_timeout=60, read_timeout=60
+        )
     else:
-        await bot.send_media_group(chat_id, media_group, write_timeout=60, read_timeout=60)
+        await bot.send_media_group(
+            chat_id, media_group, write_timeout=60, read_timeout=60
+        )
 
 
 async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     msg = update.message
     logging.info(msg.text)
 
-    success, feedback, caption, images = await get_artworks(
+    success, feedback, caption, images, _ = await get_artworks(
         update.message, post_mode=False
     )
     if success:
@@ -248,7 +257,7 @@ async def set_commands(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 async def mark(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if update.message.chat_id not in config.bot_admin_chats:
         return await permission_denied(update.message)
-    success, msg, tmp, tmp = await get_artworks(update.message, instant_feedback=False)
+    success, msg, _, _, _ = await get_artworks(update.message, instant_feedback=False)
     if success:
         await update.message.reply_text("成功标记为已发送！")
     else:
@@ -338,10 +347,12 @@ async def on_start(application: Application):
     await restore_from_restart()
 
 
-async def restart(update: Update, context: ContextTypes.DEFAULT_TYPE, update_msg: str = "") -> None:
+async def restart(
+    update: Update, context: ContextTypes.DEFAULT_TYPE, update_msg: str = ""
+) -> None:
     if update.message.chat_id not in config.bot_admin_chats:
         return await permission_denied(update.message)
-    msg = await update.message.reply_text(update_msg+"Restarting...")
+    msg = await update.message.reply_text(update_msg + "Restarting...")
     with open(restart_data, "w", encoding="utf-8") as f:
         f.write(msg.to_json())
     application.stop_running()
