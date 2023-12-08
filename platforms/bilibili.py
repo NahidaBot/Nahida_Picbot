@@ -78,9 +78,10 @@ async def get_artworks(
     existing_image = check_deduplication(id)
     if post_mode and config.bot_deduplication_mode and existing_image:
         logger.warning(f"试图发送重复的图片: {platform}" + str(id))
+        user = User(existing_image.userid, existing_image.username, is_bot=False)
         return (
             False,
-            f"该图片已经由 @{existing_image.username} 于 {str(existing_image.create_time)[:-7]} 发过",
+            f"该图片已经由 {user.mention_html()} 于 {str(existing_image.create_time)[:-7]} 发过",
             None,
             None,
         )
@@ -100,7 +101,7 @@ async def get_artworks(
         await download(image_list[i]["url"], download_path, filename)
         image = Image(
             userid=user.id,
-            username=user.username,
+            username=user.name(),
             platform=platform,
             pid=id,
             title=title,

@@ -56,10 +56,11 @@ async def get_artworks(
 
     existing_image = check_deduplication(pid)
     if post_mode and config.bot_deduplication_mode and existing_image:
-        logger.warning("试图发送重复的图片: twitter" + str(pid))
+        logger.warning(f"试图发送重复的图片: {platform}" + str(pid))
+        user = User(existing_image.userid, existing_image.username, is_bot=False)
         return (
             False,
-            f"该图片已经由 @{existing_image.username} 于 {str(existing_image.create_time)[:-7]} 发过",
+            f"该图片已经由 {user.mention_html()} 于 {str(existing_image.create_time)[:-7]} 发过",
             None,
             None,
         )
@@ -90,7 +91,7 @@ async def get_artworks(
             extension = image_json["extension"]
             img = Image(
                 userid=user.id,
-                username=user.username,
+                username=user.name(),
                 platform="twitter",
                 pid=pid,
                 title=tweet_content,
@@ -108,7 +109,7 @@ async def get_artworks(
             images.append(img)
             r = requests.get(img.rawurl)
             filename = f"{img.pid}_{img.page}.{extension}"
-            file_path = download_path+filename
+            file_path = download_path + filename
             with open(file_path, "wb") as f:
                 f.write(r.content)
             img.size = os.path.getsize(file_path)
