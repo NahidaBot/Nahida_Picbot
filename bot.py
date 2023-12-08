@@ -327,7 +327,7 @@ async def _get_admins(chat_id: int | str) -> None:
 
 async def permission_denied(message: telegram.Message) -> None:
     # TODO 鉴权这块可以改成装饰器实现
-    await message.reply_text("permission denied")
+    await message.reply_text("Permission denied")
 
 
 # 定义一个异步的初始化函数
@@ -338,10 +338,10 @@ async def on_start(application: Application):
     await restore_from_restart()
 
 
-async def restart(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def restart(update: Update, context: ContextTypes.DEFAULT_TYPE, update_msg: str = "") -> None:
     if update.message.chat_id not in config.bot_admin_chats:
         return await permission_denied(update.message)
-    msg = await update.message.reply_text("Exiting...")
+    msg = await update.message.reply_text(update_msg+"Restarting...")
     with open(restart_data, "w", encoding="utf-8") as f:
         f.write(msg.to_json())
     application.stop_running()
@@ -351,7 +351,7 @@ async def restore_from_restart() -> None:
     if os.path.exists(restart_data):
         with open(restart_data) as f:
             msg: Message = Message.de_json(json.load(f), bot)
-            await msg.edit_text("Restart success")
+            await msg.edit_text("Restart success!")
         os.remove(restart_data)
 
 
@@ -375,7 +375,7 @@ async def update(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     except subprocess.CalledProcessError as e:
         logger.error("更新出错:" + e)
         return await update.message.reply_text("Update failed! Please check logs.")
-    await restart(update, context, "Update success, restarting...")
+    await restart(update, context, "Update success! ")
 
 
 def main() -> None:
