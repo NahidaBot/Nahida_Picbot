@@ -388,6 +388,7 @@ def main() -> None:
     application.add_handler(CommandHandler("unmark_dup", unmark))
     application.add_handler(CommandHandler("set_commands", set_commands))
     application.add_handler(CommandHandler("repost_orig", repost_orig))
+    application.add_handler(CommandHandler("update", update))
     application.add_handler(CommandHandler("get_admins", get_admins))
     application.add_handler(
         MessageHandler(
