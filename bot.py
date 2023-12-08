@@ -162,7 +162,7 @@ async def send_media_group(
     logger.debug(reply_msg)
     reply_msg = reply_msg[0]
 
-    if reply_msg and chat_id == config.bot_channel:
+    if reply_msg and (chat_id == config.bot_channel) or (chat_id == config.bot_enable_ai_redirect_channel):
         # 发原图
         application.bot_data[reply_msg.id] = images
         logger.info(application.bot_data[reply_msg.id])
