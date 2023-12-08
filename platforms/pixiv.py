@@ -76,6 +76,7 @@ async def get_artworks(
 
     images: list[Image] = []
     r18: bool = illust["x_restrict"] == 1 or ("#NSFW" in input_tags)
+    ai: bool = False
 
     # tag 处理
     if not input_tags:
@@ -83,13 +84,16 @@ async def get_artworks(
     tags: set = set()
     for tag in input_tags:
         tag = "#" + tag.lstrip("#")
+        if len(tag) <= 3:
+            tag = tag.upper()
         image_tag = ImageTag(pid=pid, tag=tag)
         session.add(image_tag)
         tags.add(tag)
     if r18:
         tags.add("#NSFW")
-    if illust["illust_ai_type"] == 2:
+    if illust["illust_ai_type"] or "#AI" in tags:
         tags.add("#AI")
+        ai = True
 
     meta_pages = illust["meta_pages"]
     for i in range(page_count):
@@ -119,7 +123,7 @@ async def get_artworks(
             if page_count > 1
             else illust["image_urls"]["large"],
             guest=(not post_mode),
-            ai=illust["illust_ai_type"] == 2,
+            ai=ai,
         )
         if image_width_height_info:
             logger.debug(image_width_height_info)

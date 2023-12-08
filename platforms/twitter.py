@@ -77,13 +77,19 @@ async def get_artworks(
 
     input_tags: set[str] = set(tags + input_tags)
     r18 = tweet_info["sensitive"] or ("#NSFW" in tags)
+    ai: bool = False
     tags = set()
     for tag in input_tags:
         tags.add("#" + tag.lstrip("#"))
+        if len(tag) <= 3:
+            tag = tag.upper()
         image_tag = ImageTag(pid=pid, tag=tag)
         session.add(image_tag)
     if r18:
         tags.add("#NSFW")
+    if "#AI" in tags:
+        tags.add("#AI")
+        ai = True
 
     for image in tweet_json:
         if image[0] == 3:
@@ -105,6 +111,7 @@ async def get_artworks(
                 guest=(not post_mode),
                 width=image_json["width"],
                 height=image_json["height"],
+                ai=ai,
             )
             images.append(img)
             r = requests.get(img.rawurl)

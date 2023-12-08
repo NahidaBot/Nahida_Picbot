@@ -73,6 +73,7 @@ async def get_artworks(
     page_count = len(image_list)
     title = post_json["module_dynamic"]["major"]["opus"]["summary"]["text"]
     r18 = False
+    ai: bool = False
     msg = f"获取成功！\n" f"<b>{title}</b>\n" f"共有{page_count}张图片\n"
 
     existing_image = check_deduplication(id)
@@ -89,9 +90,14 @@ async def get_artworks(
     tags: set[str] = set()
     for tag in input_tags:
         tag = "#" + tag.strip("#")
+        if len(tag) <= 3:
+            tag = tag.upper()
         image_tag = ImageTag(pid=id, tag=tag)
         session.add(image_tag)
         tags.add(tag)
+    if "#AI" in tags:
+        tags.add("#AI")
+        ai = True
 
     images: list[Image] = []
     for i in range(page_count):
@@ -117,6 +123,7 @@ async def get_artworks(
             guest=(not post_mode),
             width=image_list[i]["width"],
             height=image_list[i]["height"],
+            ai=ai,
         )
         images.append(image)
         session.add(image)
