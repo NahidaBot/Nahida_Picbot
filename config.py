@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     pixiv_phpsessid: str
 
     # bilibili cookie (暂未启用)
-    bilibili_cookie: str
+    bilibili_cookie: str = ""
 
     txt_help: str = """\
 此机器人还在测试中, 目前只有发图一个功能~\n
