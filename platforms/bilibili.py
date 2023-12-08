@@ -101,7 +101,7 @@ async def get_artworks(
         await download(image_list[i]["url"], download_path, filename)
         image = Image(
             userid=user.id,
-            username=user.name(),
+            username=user.name,
             platform=platform,
             pid=id,
             title=title,

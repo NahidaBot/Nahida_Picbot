@@ -33,6 +33,7 @@ class Image(Base):
     width: int = Column(Integer)
     height: int = Column(Integer)
     guest: bool = Column(Boolean, default=False)
+    ai: bool = Column(Boolean, default=False)
 
 
 class ImageTag(Base):

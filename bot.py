@@ -87,7 +87,6 @@ async def get_artworks(
     tags = splited_msg[1:]
     user = msg.from_user
 
-    platform = None
     success = False
     caption = ""
     feedback = ""
@@ -148,6 +147,9 @@ async def send_media_group(
     if interval.total_seconds() < config.bot_disable_notification_interval:
         disable_notification = True
     application.bot_data["last_msg"] = now
+
+    if config.bot_enable_ai_redirect and chat_id == config.bot_channel and images[0].ai:
+        chat_id = config.bot_enable_ai_redirect_channel
 
     reply_msg = await bot.send_media_group(
         chat_id,

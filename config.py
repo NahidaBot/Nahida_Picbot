@@ -11,6 +11,9 @@ class Settings(BaseSettings):
     bot_deduplication_mode: bool
     bot_disable_notification_interval: int = 600
 
+    bot_enable_ai_redirect: bool = False
+    bot_enable_ai_redirect_channel: str = ""
+
     db_url: str
 
     pixiv_refresh_token: str

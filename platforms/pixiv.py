@@ -103,7 +103,7 @@ async def get_artworks(
         file_size = os.path.getsize(file_path)
         img = Image(
             userid=user.id,
-            username=user.name(),
+            username=user.name,
             platform=platform,
             pid=pid,
             title=illust["title"],

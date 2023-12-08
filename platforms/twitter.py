@@ -91,7 +91,7 @@ async def get_artworks(
             extension = image_json["extension"]
             img = Image(
                 userid=user.id,
-                username=user.name(),
+                username=user.name,
                 platform="twitter",
                 pid=pid,
                 title=tweet_content,
