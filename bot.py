@@ -1,6 +1,7 @@
 import re
 import os
 import json
+import math
 import time
 import logging
 import datetime
@@ -151,21 +152,32 @@ async def send_media_group(
     if config.bot_enable_ai_redirect and chat_id == config.bot_channel and images[0].ai:
         chat_id = config.bot_enable_ai_redirect_channel
 
-    reply_msg = await bot.send_media_group(
-        chat_id,
-        media_group,
-        caption=caption,
-        parse_mode=ParseMode.HTML,
-        disable_notification=disable_notification,
-        read_timeout=20,
-    )
-    logger.debug(reply_msg)
-    reply_msg = reply_msg[0]
+    batch_size = 9
+    page = 1
+    total_page = math.ceil(len(media_group)/batch_size)
+    while media_group:
+        page_count = ""
+        if total_page > 1:
+            page_count = f"({page}/{total_page})\n"
+            page += 1
+        reply_msg = await bot.send_media_group(
+            chat_id,
+            media_group[:batch_size],
+            caption=page_count+caption,
+            parse_mode=ParseMode.HTML,
+            disable_notification=disable_notification,
+            read_timeout=60,
+            write_timeout=60,
+        )
+        logger.debug(reply_msg)
+        reply_msg = reply_msg[0]
 
-    if reply_msg and (chat_id == config.bot_channel) or (chat_id == config.bot_enable_ai_redirect_channel):
-        # 发原图
-        application.bot_data[reply_msg.id] = images
-        logger.info(application.bot_data[reply_msg.id])
+        if reply_msg and (chat_id == config.bot_channel) or (chat_id == config.bot_enable_ai_redirect_channel):
+            # 发原图
+            application.bot_data[reply_msg.id] = images[:batch_size]
+            logger.info(application.bot_data[reply_msg.id])
+        images = images[batch_size:]
+        media_group = media_group[batch_size:]
 
     msg += f"\n发送成功！"
     return msg
@@ -196,9 +208,9 @@ async def post_original_pic(
         with open(file_path, "rb") as f:
             media_group.append(telegram.InputMediaDocument(f))
     if msg:
-        await msg.reply_media_group(media=media_group, write_timeout=60)
+        await msg.reply_media_group(media=media_group, write_timeout=60, read_timeout=60)
     else:
-        await bot.send_media_group(chat_id, media_group, write_timeout=60)
+        await bot.send_media_group(chat_id, media_group, write_timeout=60, read_timeout=60)
 
 
 async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
