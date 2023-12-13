@@ -32,9 +32,10 @@ vi .env # 或者你顺手的编辑器
 Linux:
 
 ```bash
-cp gallery-dl.conf.example ~/.gallery-dl.conf
+sudo cp gallery-dl.conf.example /etc/gallery-dl.conf
 
-vi .env # 或者你顺手的编辑器
+sudo vi /etc/gallery-dl.conf # 或者你顺手的编辑器
+# 目前只需要更改 twitter 的用户名和密码, 似乎不支持 2fa, 介意可以注册小号
 ```
 
 Windows:
@@ -49,6 +50,47 @@ code %USERPROFILE%\gallery-dl.conf # 或者你顺手的编辑器
 
 ```
 python bot.py
+```
+
+6. Linux 自启动参考
+
+将以下文件保存到 /etc/systemd/system/nahida_bot.service 
+
+```.service
+[Unit]
+Description=Nahida Picbot for telegram channel
+After=network.target
+
+[Install]
+WantedBy=multi-user.target
+
+[Service]
+Type=simple
+WorkingDirectory=/path/to/Nahida_Picbot/
+ExecStart=/usr/bin/python3 bot.py
+Restart=always
+```
+
+systemctl 常用命令参考
+
+```shell
+# 添加自启动, 且立即启动
+systemctl enable --now nahida_bot.service 
+# 关闭自启动, 且立即停止
+systemctl disable --now nahida_bot.service 
+# 去掉 --now 参数, 则仅影响下次自启动
+
+# 查看运行状态
+systemctl restart nahida_bot.service 
+# 开启
+systemctl start nahida_bot.service 
+# 关闭
+systemctl stop nahida_bot.service 
+# 重启 适用于重载配置文件等
+systemctl restart nahida_bot.service 
+
+# 查看日志 (遇到错误可以打开 debug 模式)
+journalctl -u nahida_bot.service # 可以使用 Pg Up/Down 翻页
 ```
 
 ## 参考
