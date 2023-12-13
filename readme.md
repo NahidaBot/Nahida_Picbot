@@ -81,7 +81,7 @@ systemctl disable --now nahida_bot.service
 # 去掉 --now 参数, 则仅影响下次自启动
 
 # 查看运行状态
-systemctl restart nahida_bot.service 
+systemctl status nahida_bot.service 
 # 开启
 systemctl start nahida_bot.service 
 # 关闭
