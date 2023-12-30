@@ -26,7 +26,9 @@ def compress_image(
             logger.info("meet limits. resized.")
             scale_factor = 2560 / max_side
             img = img.resize(
-                (int(width*scale_factor), int(height*scale_factor)), PIL.Image.LANCZOS)
+                (int(width * scale_factor), int(height * scale_factor)),
+                PIL.Image.LANCZOS,
+            )
 
         # Check if the image size is already acceptable
         img_byte_arr = io.BytesIO()
@@ -61,10 +63,10 @@ def check_deduplication(pid: int | str) -> Image | None:
 
 
 def unmark_deduplication(pid: int | str) -> None:
-    '''
+    """
     反标记
     具体实现方法是直接删除匹配 pid 的项 (
-    '''
+    """
     images_to_delete = session.query(Image).filter(Image.pid == int(pid)).all()
 
     # 删除查询到的数据
@@ -76,7 +78,6 @@ def unmark_deduplication(pid: int | str) -> None:
 
 
 def find_url(message: Message) -> list[str]:
-    
     logger.debug(message.reply_to_message)
     logger.debug(message.reply_to_message.entities)
     entities = message.reply_to_message.caption_entities

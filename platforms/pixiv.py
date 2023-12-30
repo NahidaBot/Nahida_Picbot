@@ -60,16 +60,17 @@ async def get_artworks(
 
     page_count = illust["page_count"]
 
-    existing_image = check_deduplication(pid)
-    if post_mode and config.bot_deduplication_mode and existing_image:
-        logger.warning(f"试图发送重复的图片: {platform}" + str(pid))
-        user = User(existing_image.userid, existing_image.username, is_bot=False)
-        return (
-            False,
-            f"该图片已经由 {user.mention_html()} 于 {str(existing_image.create_time)[:-7]} 发过",
-            None,
-            None,
-        )
+    if post_mode and config.bot_deduplication_mode:
+        existing_image = check_deduplication(pid)
+        if existing_image:
+            logger.warning(f"试图发送重复的图片: {platform}" + str(pid))
+            user = User(existing_image.userid, existing_image.username, is_bot=False)
+            return (
+                False,
+                f"该图片已经由 {user.mention_html()} 于 {str(existing_image.create_time)[:-7]} 发过",
+                None,
+                None,
+            )
 
     image_width_height_info = await get_artworks_width_height(pid)
     msg = f"获取成功！\n" f'<b>{illust["title"]}</b>\n' f"共有{page_count}张图片\n"

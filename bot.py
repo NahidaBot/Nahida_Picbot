@@ -27,9 +27,7 @@ if not os.path.exists("./downloads/"):
 from config import config
 from platforms import pixiv, twitter, miyoushe, bilibili
 from entities import Image
-from utils import (
-    compress_image, is_within_size_limit, unmark_deduplication, find_url
-)
+from utils import compress_image, is_within_size_limit, unmark_deduplication, find_url
 
 MAX_FILE_SIZE = 10 * 1024 * 1024
 
@@ -324,12 +322,13 @@ async def _get_admins(chat_id: int | str) -> None:
 
 
 async def is_admin(user: telegram.User) -> bool:
-    result = ( user.id in application.bot_data["admins"] or
-               user.id in config.bot_admin_chats or
-               user.id == config.bot_channel_comment_group or
-               user.username == config.bot_channel or
-               user.username == config.bot_enable_ai_redirect_channel
-            )
+    result = (
+        user.id in application.bot_data["admins"]
+        or user.id in config.bot_admin_chats
+        or user.id == config.bot_channel_comment_group
+        or user.username == config.bot_channel
+        or user.username == config.bot_enable_ai_redirect_channel
+    )
     logger.debug(user)
     logger.debug(application.bot_data["admins"])
     logger.debug(result)

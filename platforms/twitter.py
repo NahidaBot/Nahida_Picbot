@@ -54,16 +54,17 @@ async def get_artworks(
     tweet_info = tweet_json[0][1]
     pid = tweet_info["tweet_id"]
 
-    existing_image = check_deduplication(pid)
-    if post_mode and config.bot_deduplication_mode and existing_image:
-        logger.warning(f"试图发送重复的图片: {platform}" + str(pid))
-        user = User(existing_image.userid, existing_image.username, is_bot=False)
-        return (
-            False,
-            f"该图片已经由 {user.mention_html()} 于 {str(existing_image.create_time)[:-7]} 发过",
-            None,
-            None,
-        )
+    if post_mode and config.bot_deduplication_mode:
+        existing_image = check_deduplication(pid)
+        if existing_image:
+            logger.warning(f"试图发送重复的图片: {platform}" + str(pid))
+            user = User(existing_image.userid, existing_image.username, is_bot=False)
+            return (
+                False,
+                f"该图片已经由 {user.mention_html()} 于 {str(existing_image.create_time)[:-7]} 发过",
+                None,
+                None,
+            )
 
     author = tweet_info["author"]
     tweet_content = tweet_info["content"]
