@@ -72,10 +72,10 @@ async def get_artworks(
     msg = f"""获取成功！\n共有{page_count}张图片\n"""
 
     # 替换掉原有的 HASHTAG, 已作废
-    HASHTAG_PATTERN = r"""#[^\s!@#$%^&*(),.?":{}|<>]+"""
-    HASHTAG_PATTERN_SPACE = r"""(?:\s)?#[^\s!@#$%^&*(),.?":{}|<>]+(?:\s)?"""
-    tags = re.findall(HASHTAG_PATTERN, tweet_content)
-    tweet_content = re.sub(HASHTAG_PATTERN_SPACE, "", tweet_content)
+    # HASHTAG_PATTERN = r"""#[^\s!@#$%^&*(),.?":{}|<>]+"""
+    # HASHTAG_PATTERN_SPACE = r"""(?:\s)?#[^\s!@#$%^&*(),.?":{}|<>]+(?:\s)?"""
+    # tags = re.findall(HASHTAG_PATTERN, tweet_content)
+    # tweet_content = re.sub(HASHTAG_PATTERN_SPACE, "", tweet_content)
 
     input_tags: set[str] = set(input_tags)
     r18 = tweet_info["sensitive"] or ("#NSFW" in tags)
