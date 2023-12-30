@@ -71,12 +71,13 @@ async def get_artworks(
     page_count = tweet_info["count"]
     msg = f"""获取成功！\n共有{page_count}张图片\n"""
 
+    # 替换掉原有的 HASHTAG, 已作废
     HASHTAG_PATTERN = r"""#[^\s!@#$%^&*(),.?":{}|<>]+"""
     HASHTAG_PATTERN_SPACE = r"""(?:\s)?#[^\s!@#$%^&*(),.?":{}|<>]+(?:\s)?"""
     tags = re.findall(HASHTAG_PATTERN, tweet_content)
     tweet_content = re.sub(HASHTAG_PATTERN_SPACE, "", tweet_content)
 
-    input_tags: set[str] = set(tags + input_tags)
+    input_tags: set[str] = set(input_tags)
     r18 = tweet_info["sensitive"] or ("#NSFW" in tags)
     ai: bool = False
     tags = set()
@@ -126,7 +127,7 @@ async def get_artworks(
             msg += f'第{image_json["num"]}张图片：{img.width}x{img.height}\n'
     session.commit()
     caption = (
-        f"{html_esc(images[0].title)}\n"
+        f"<blockquote>{html_esc(images[0].title)}</blockquote>\n"
         f'<a href="https://twitter.com/{author["name"]}/status/{pid}">Source</a> by <a href="https://twitter.com/{author["name"]}">twitter @{author["name"]}</a>\n'
     )
     if tags:

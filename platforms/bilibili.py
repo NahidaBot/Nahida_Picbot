@@ -135,7 +135,7 @@ async def get_artworks(
     author_url = f"https://space.bilibili.com/{authorid}"
 
     caption = (
-        f"{html_esc(title)}\n"
+        f"<blockquote>{html_esc(title)}</blockquote>\n"
         f'<a href="{post_url}">Source</a> by <a href="{author_url}">{platform} @{html_esc(author)}</a>\n'
     )
     if tags:
