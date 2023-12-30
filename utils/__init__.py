@@ -3,6 +3,7 @@ import logging
 import PIL.Image
 from db import session
 from entities import Image
+from telegram import Message
 
 logger = logging.getLogger(__name__)
 MAX_SIDE = 2560
@@ -72,3 +73,15 @@ def unmark_deduplication(pid: int | str) -> None:
 
     # 提交更改
     session.commit()
+
+
+def find_url(message: Message) -> list[str]:
+    
+    logger.debug(message.reply_to_message)
+    logger.debug(message.reply_to_message.entities)
+    entities = message.reply_to_message.caption_entities
+    urls: list[str] = []
+    for entity in entities:
+        if entity.type == "text_link" or entity.type == "url":
+            urls.append(entity.url)
+    return urls
