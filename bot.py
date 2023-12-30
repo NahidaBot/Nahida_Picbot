@@ -27,7 +27,9 @@ if not os.path.exists("./downloads/"):
 from config import config
 from platforms import pixiv, twitter, miyoushe, bilibili
 from entities import Image
-from utils import compress_image, is_within_size_limit, unmark_deduplication
+from utils import (
+    compress_image, is_within_size_limit, unmark_deduplication, find_url
+)
 
 MAX_FILE_SIZE = 10 * 1024 * 1024
 
@@ -64,7 +66,7 @@ async def post(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     msg = update.message
     logging.info(msg.text)
 
-    if update.message.chat_id not in config.bot_admin_chats:
+    if not is_admin(update.message.from_user):
         return await permission_denied(update.message)
 
     success, feedback, caption, images, hint_msg = await get_artworks(update.message)
@@ -165,7 +167,7 @@ async def send_media_group(
         logger.debug(page_count)
         reply_msg = await bot.send_media_group(
             chat_id,
-            media_group[i*batch_size:(i+1)*batch_size],
+            media_group[i * batch_size : (i + 1) * batch_size],
             caption=page_count + caption,
             parse_mode=ParseMode.HTML,
             disable_notification=disable_notification,
@@ -239,7 +241,7 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def set_commands(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if update.message.chat_id not in config.bot_admin_chats:
+    if not is_admin(update.message.from_user):
         return await permission_denied(update.message)
 
     commands = [
@@ -256,7 +258,7 @@ async def set_commands(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
 
 async def mark(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if update.message.chat_id not in config.bot_admin_chats:
+    if not is_admin(update.message.from_user):
         return await permission_denied(update.message)
     success, msg, _, _, _ = await get_artworks(update.message, instant_feedback=False)
     if success:
@@ -267,7 +269,7 @@ async def mark(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def unmark(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if update.message.chat_id not in config.bot_admin_chats:
+    if not is_admin(update.message.from_user):
         return await permission_denied(update.message)
     try:
         pid = update.message.text.split()[1].strip("/").split("/")[-1].split("?")[0]
@@ -280,24 +282,10 @@ async def unmark(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def repost_orig(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    sender_id = update.message.from_user.id
-    if not (
-        (update.message.chat_id in config.bot_admin_chats)
-        or (sender_id in context.bot_data["admins"])
-        or (
-            update.message.sender_chat
-            and update.message.sender_chat.id == config.bot_channel_comment_group
-        )
-    ):
+    if not is_admin(update.message.from_user):
         return await permission_denied(update.message)
     try:
-        logger.debug(update.message.reply_to_message)
-        logger.debug(update.message.reply_to_message.entities)
-        entities = update.message.reply_to_message.caption_entities
-        urls: list[str] = []
-        for entity in entities:
-            if entity.type == "text_link":
-                urls.append(entity.url)
+        urls = find_url(update.message)
         if len(urls) == 0:
             raise AttributeError(name="没有获取到 url")
     except Exception as e:
@@ -335,6 +323,19 @@ async def _get_admins(chat_id: int | str) -> None:
     application.bot_data["admins"] = admins
 
 
+async def is_admin(user: telegram.User) -> bool:
+    result = ( user.id in application.bot_data["admins"] or
+               user.id in config.bot_admin_chats or
+               user.id == config.bot_channel_comment_group or
+               user.username == config.bot_channel or
+               user.username == config.bot_enable_ai_redirect_channel
+            )
+    logger.debug(user)
+    logger.debug(application.bot_data["admins"])
+    logger.debug(result)
+    return result
+
+
 async def permission_denied(message: telegram.Message) -> None:
     # TODO 鉴权这块可以改成装饰器实现
     await message.reply_text("Permission denied")
@@ -368,10 +369,9 @@ async def restore_from_restart() -> None:
 
 
 async def update(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if update.message.chat_id not in config.bot_admin_chats:
+    if not is_admin(update.message.from_user):
         return await permission_denied(update.message)
     try:
-        # 要执行的命令, 包括 gallery-dl 命令和要下载的图库URL
         command = ["git", "pull"]
 
         # 使用subprocess执行命令
