@@ -153,17 +153,19 @@ async def send_media_group(
     if config.bot_enable_ai_redirect and chat_id == config.bot_channel and images[0].ai:
         chat_id = config.bot_enable_ai_redirect_channel
 
-    batch_size = 9
-    page = 1
-    total_page = math.ceil(len(media_group) / batch_size)
-    while media_group:
+    MAX_NUM = 10
+    total_page = math.ceil(len(media_group) / MAX_NUM)
+    batch_size = math.ceil(len(media_group) / total_page)
+    logger.debug(total_page)
+    logger.debug(batch_size)
+    for i in range(total_page):
         page_count = ""
         if total_page > 1:
-            page_count = f"({page}/{total_page})\n"
-            page += 1
+            page_count = f"({i+1}/{total_page})\n"
+        logger.debug(page_count)
         reply_msg = await bot.send_media_group(
             chat_id,
-            media_group[:batch_size],
+            media_group[i*batch_size:(i+1)*batch_size],
             caption=page_count + caption,
             parse_mode=ParseMode.HTML,
             disable_notification=disable_notification,
@@ -182,7 +184,6 @@ async def send_media_group(
             application.bot_data[reply_msg.id] = images[:batch_size]
             logger.info(application.bot_data[reply_msg.id])
         images = images[batch_size:]
-        media_group = media_group[batch_size:]
 
     msg += f"\n发送成功！"
     return msg
