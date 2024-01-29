@@ -321,7 +321,7 @@ async def _get_admins(chat_id: int | str) -> None:
     application.bot_data["admins"] = admins
 
 
-async def is_admin(user: telegram.User) -> bool:
+def is_admin(user: telegram.User) -> bool:
     result = (
         user.id in application.bot_data["admins"]
         or user.id in config.bot_admin_chats
