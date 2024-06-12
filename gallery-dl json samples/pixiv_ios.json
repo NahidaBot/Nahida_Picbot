@@ -1,0 +1,76 @@
+{
+    "id": 119574221,
+    "title": "伝説の新人剣士",
+    "type": "illust",
+    "image_urls": {
+        "square_medium": "https: //i.pximg.net/c/360x360_70/img-master/img/2024/06/12/18/12/04/119574221_p0_square1200.jpg",
+        "medium": "https://i.pximg.net/c/540x540_70/img-master/img/2024/06/12/18/12/04/119574221_p0_master1200.jpg",
+        "large": "https://i.pximg.net/c/600x1200_90/img-master/img/2024/06/12/18/12/04/119574221_p0_master1200.jpg"
+    },
+    "caption": "",
+    "restrict": 0,
+    "user": {
+        "id": 76846869,
+        "name": "かぼす",
+        "account": "user_pcwd7883",
+        "profile_image_urls": {
+            "medium": "https://i.pximg.net/user-profile/img/2024/04/19/21/33/11/25784320_74f961c4beaadfe5ba16febd29ed4b10_170.jpg"
+        },
+        "is_followed": true
+    },
+    "tags": [
+        {
+            "name": "崩壊スターレイル",
+            "translated_name": "崩坏：星穹铁道"
+        },
+        {
+            "name": "スターレイル",
+            "translated_name": "星穹铁道"
+        },
+        {
+            "name": "三月なのか",
+            "translated_name": "三月七"
+        },
+        {
+            "name": "剣士",
+            "translated_name": "swordsman"
+        },
+        {
+            "name": "女の子",
+            "translated_name": "女孩子"
+        },
+        {
+            "name": "少女",
+            "translated_name": "young girl"
+        },
+        {
+            "name": "ドヤ顔",
+            "translated_name": "得意脸"
+        },
+        {
+            "name": "三月なのか(仙舟)",
+            "translated_name": null
+        }
+    ],
+    "tools": [],
+    "create_date": "2024-06-12T18:12:04+09:00",
+    "page_count": 1,
+    "width": 2894,
+    "height": 3604,
+    "sanity_level": 2,
+    "x_restrict": 0,
+    "series": null,
+    "meta_single_page": {
+        "original_image_url": "https://i.pximg.net/img-original/img/2024/06/12/18/12/04/119574221_p0.png"
+    },
+    "meta_pages": [],
+    "total_view": 573,
+    "total_bookmarks": 193,
+    "is_bookmarked": true,
+    "visible": true,
+    "is_muted": false,
+    "total_comments": 1,
+    "illust_ai_type": 1,
+    "illust_book_style": 0,
+    "comment_access_control": 0
+}
