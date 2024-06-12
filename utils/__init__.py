@@ -63,12 +63,12 @@ def is_within_size_limit(input_path: str) -> bool:
     return True
 
 
-def check_deduplication(pid: int | str) -> Image | None:
+def check_duplication(pid: int | str) -> Image | None:
     image = session.query(Image).filter_by(pid=pid, post_by_guest=False).first()
     logger.debug(image)
     return image
 
-def check_deduplication_via_url(url: str) -> Image | None:
+def check_duplication_via_url(url: str) -> Image | None:
     image = session.query(Image).filter_by(url=url, post_by_guest=False).first()
     logger.debug(image)
     return image

@@ -14,7 +14,7 @@ from telegram import User
 from config import config
 from entities import Image, ImageTag, ArtworkResult
 from utils.escaper import html_esc
-from utils import check_deduplication
+from utils import check_duplication
 from db import session
 
 logger = logging.getLogger(__name__)
@@ -55,7 +55,7 @@ async def get_artworks(
     pid = tweet_info["tweet_id"]
 
     if post_mode and config.bot_deduplication_mode:
-        existing_image = check_deduplication(pid)
+        existing_image = check_duplication(pid)
         if existing_image:
             logger.warning(f"试图发送重复的图片: {platform}" + str(pid))
             user = User(existing_image.userid, existing_image.username, is_bot=False)
