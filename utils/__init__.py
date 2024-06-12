@@ -6,8 +6,8 @@ from entities import Image
 from telegram import Message
 
 logger = logging.getLogger(__name__)
-MAX_SIDE = 2560
 
+MAX_SIDE = 2560
 
 def compress_image(
     input_path: str, output_path: str, target_size_mb: int = 10, quality=100
@@ -49,6 +49,13 @@ def compress_image(
 
 
 def is_within_size_limit(input_path: str) -> bool:
+    import os
+    MAX_FILE_SIZE = 10 * 1024 * 1024
+
+    size = os.path.getsize(input_path)
+    if size >= MAX_FILE_SIZE:
+        return False
+
     with PIL.Image.open(input_path) as img:
         width, height = img.size
         if max(height, width) > MAX_SIDE:
@@ -57,7 +64,12 @@ def is_within_size_limit(input_path: str) -> bool:
 
 
 def check_deduplication(pid: int | str) -> Image | None:
-    image = session.query(Image).filter_by(pid=pid, guest=False).first()
+    image = session.query(Image).filter_by(pid=pid, post_by_guest=False).first()
+    logger.debug(image)
+    return image
+
+def check_deduplication_via_url(url: str) -> Image | None:
+    image = session.query(Image).filter_by(url=url, post_by_guest=False).first()
     logger.debug(image)
     return image
 
@@ -65,7 +77,7 @@ def check_deduplication(pid: int | str) -> Image | None:
 def unmark_deduplication(pid: int | str) -> None:
     """
     反标记
-    具体实现方法是直接删除匹配 pid 的项 (
+    直接删除匹配 pid 的项 (
     """
     images_to_delete = session.query(Image).filter(Image.pid == int(pid)).all()
 

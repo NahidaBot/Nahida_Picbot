@@ -5,7 +5,7 @@ from telegram import User
 import requests
 
 from config import config
-from entities import Image, ImageTag
+from entities import Image, ImageTag, ArtworkResult
 from utils.escaper import html_esc
 from utils import check_deduplication
 from db import session
@@ -59,7 +59,7 @@ async def download(url: str, path: str, filename: str) -> bool:
 
 async def get_artworks(
     url: str, input_tags: list, user: User, post_mode: bool = True
-) -> (bool, str, str, list[Image]):
+) -> ArtworkResult:
     """
     只有 post_mode 和 config.bot_deduplication_mode 都为 True, 才检测重复
     """
@@ -119,9 +119,9 @@ async def get_artworks(
             authorid=authorid,
             r18=r18,
             extension=extension,
-            rawurl=image_list[i]["url"],
-            thumburl=image_list[i]["url"],
-            guest=(not post_mode),
+            url_original_pic=image_list[i]["url"],
+            url_thumb_pic=image_list[i]["url"],
+            post_by_guest=(not post_mode),
             width=image_list[i]["width"],
             height=image_list[i]["height"],
             ai=ai,
@@ -140,5 +140,5 @@ async def get_artworks(
     )
     if tags:
         caption += f'{" ".join(tags)}\n'
-
-    return (True, msg, caption, images)
+    
+    return ArtworkResult(True, msg, caption, images)

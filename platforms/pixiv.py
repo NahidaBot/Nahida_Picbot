@@ -8,12 +8,11 @@ from pixivpy3 import *
 from retry import retry
 from sqlalchemy import func
 
-import telegram
 from telegram import User
 from telegram.constants import ParseMode
 
 from config import config
-from entities import Image, ImageTag
+from entities import Image, ImageTag, ArtworkResult
 from utils.escaper import html_esc
 from utils import check_deduplication
 from db import session
@@ -50,7 +49,7 @@ def get_illust(pid: int | str) -> dict:
 
 async def get_artworks(
     url: str, input_tags: list[str], user: User, post_mode: bool = True
-) -> (bool, str, str, list[Image]):
+) -> ArtworkResult:
     """
     只有 post_mode 和 config.bot_deduplication_mode 都为 True, 才检测重复
     """
@@ -99,11 +98,11 @@ async def get_artworks(
     meta_pages = illust["meta_pages"]
     for i in range(page_count):
         if page_count > 1:
-            rawurl: str = meta_pages[i]["image_urls"]["original"]
+            url_original_pic: str = meta_pages[i]["image_urls"]["original"]
         else:
-            rawurl: str = illust["meta_single_page"]["original_image_url"]
-        api.download(rawurl, path=download_path)
-        filename = rawurl.split("/")[-1]
+            url_original_pic: str = illust["meta_single_page"]["original_image_url"]
+        api.download(url_original_pic, path=download_path)
+        filename = url_original_pic.split("/")[-1]
         file_path = f"./downloads/{platform}/{filename}"
         file_size = os.path.getsize(file_path)
         img = Image(
@@ -118,12 +117,12 @@ async def get_artworks(
             author=illust["user"]["name"],
             authorid=illust["user"]["id"],
             r18=r18,
-            extension=rawurl.split(".")[-1],
-            rawurl=rawurl,
-            thumburl=meta_pages[i]["image_urls"]["large"]
+            extension=url_original_pic.split(".")[-1],
+            url_original_pic=url_original_pic,
+            url_thumb_pic=meta_pages[i]["image_urls"]["large"]
             if page_count > 1
             else illust["image_urls"]["large"],
-            guest=(not post_mode),
+            post_by_guest=(not post_mode),
             ai=ai,
         )
         if image_width_height_info:
@@ -141,7 +140,7 @@ async def get_artworks(
         f'{" ".join(tags)}\n'
     )
 
-    return (True, msg, caption, images)
+    return ArtworkResult(True, msg, caption, images)
 
 
 async def get_artworks_width_height(pid: int) -> list | None:

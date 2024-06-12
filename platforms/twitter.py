@@ -12,7 +12,7 @@ from sqlalchemy import func
 from telegram import User
 
 from config import config
-from entities import Image, ImageTag
+from entities import Image, ImageTag, ArtworkResult
 from utils.escaper import html_esc
 from utils import check_deduplication
 from db import session
@@ -29,7 +29,7 @@ if not os.path.exists(download_path):
 
 async def get_artworks(
     url: str, input_tags: list, user: User, post_mode: bool = True
-) -> (bool, str, str, list[Image]):
+) -> ArtworkResult:
     try:
         # 要执行的命令, 包括 gallery-dl 命令和要下载的图库URL
         command = ["gallery-dl", url, "-j", "-q"]
@@ -108,15 +108,15 @@ async def get_artworks(
                 authorid=author["id"],
                 r18=r18,
                 extension=extension,
-                rawurl=image[1],
-                thumburl=image[1].replace("orig", "large"),
-                guest=(not post_mode),
+                url_original_pic=image[1],
+                url_thumb_pic=image[1].replace("orig", "large"),
+                post_by_guest=(not post_mode),
                 width=image_json["width"],
                 height=image_json["height"],
                 ai=ai,
             )
             images.append(img)
-            r = requests.get(img.rawurl)
+            r = requests.get(img.url_original_pic)
             filename = f"{img.pid}_{img.page}.{extension}"
             file_path = download_path + filename
             with open(file_path, "wb") as f:
@@ -133,4 +133,4 @@ async def get_artworks(
     if tags:
         caption += f'{" ".join(tags)}\n'
 
-    return (True, msg, caption, images)
+    return ArtworkResult(True, msg, caption, images)
