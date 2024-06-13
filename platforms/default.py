@@ -120,6 +120,8 @@ class DefaultPlatform:
             response = await client.get(image.url_original_pic)
             response.raise_for_status()
             file_path = cls.download_path + image.filename
+            if os.path.exists(file_path):
+                return
             with open(file_path, 'wb') as f:
                 f.write(response.content)
             logger.debug(f"已下载：{image.filename}")

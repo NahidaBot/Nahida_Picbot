@@ -3,6 +3,7 @@ import os
 import json
 import math
 import time
+import asyncio
 import logging
 import datetime
 import subprocess
@@ -212,6 +213,8 @@ async def send_media_group(
             context.bot_data[reply_msg.id] = artwork_result.images[:batch_size]
             logger.info(context.bot_data[reply_msg.id])
         artwork_result.images = artwork_result.images[batch_size:]
+        # 防止 API 速率限制
+        await asyncio.sleep(5)
 
     artwork_result.feedback += f"\n发送成功了喵！"
     return artwork_result
@@ -256,6 +259,8 @@ async def post_original_pic(
         await context.bot.send_media_group(
             chat_id, media_group, write_timeout=60, read_timeout=60
         )
+    # 防止 API 速率限制
+    asyncio.sleep(5)
 
 
 async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
