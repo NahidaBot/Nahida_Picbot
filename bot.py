@@ -2,8 +2,6 @@ import datetime
 import os
 import logging
 
-from db import session
-
 from telegram import Update
 from telegram.ext import (
     Application,
@@ -12,14 +10,10 @@ from telegram.ext import (
     filters,
 )
 from config import config
-from entities import Image
-from utils import compress_image, is_within_size_limit, unmark_deduplication, find_url
 from commands import *
 
-if not os.path.exists("./downloads/"):
-    os.mkdir("./downloads/")
-
-logger = logging.getLogger(__name__)
+if not os.path.exists("./data/downloads/"):
+    os.makedirs("./data/downloads/")
 
 if config.debug:
     logging.basicConfig(
@@ -30,15 +24,16 @@ if config.debug:
     logging.getLogger("httpcore").setLevel(logging.WARNING)
     logging.getLogger("httpx").setLevel(logging.WARNING)
 
+logger = logging.getLogger(__name__)
 
 # global application
 application = (
     Application.builder()
     .token(config.bot_token)
-    .post_init(on_start)
-    .read_timeout(20)
-    .write_timeout(20)
-    .connect_timeout(20)
+    .post_init(on_start)  # type: ignore
+    .read_timeout(60)
+    .write_timeout(60)
+    .connect_timeout(60)
     .build()
 )
 

@@ -15,4 +15,8 @@ def md_esc(markdownv2_str: str) -> str:
 
 
 def html_esc(html_str: str) -> str:
+    """
+    Telegram 的 HTML 格式
+    详见：https://core.telegram.org/bots/api#formatting-options
+    """
     return html_str.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")

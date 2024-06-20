@@ -2,22 +2,22 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    debug: bool
+    debug: bool = True
 
-    bot_token: str
-    bot_admin_chats: list
-    bot_channel: str
-    bot_channel_comment_group: int
-    bot_deduplication_mode: bool
+    bot_token: str = ""
+    bot_admin_chats: list[int] = []
+    bot_channel: str = "@"
+    bot_channel_comment_group: int = -1
+    bot_deduplication_mode: bool = False
     bot_disable_notification_interval: int = 600
 
     bot_enable_ai_redirect: bool = False
     bot_enable_ai_redirect_channel: str = ""
 
-    db_url: str
+    db_url: str = "sqlite://data/data.db"
 
-    pixiv_refresh_token: str
-    pixiv_phpsessid: str
+    pixiv_refresh_token: str = ""
+    pixiv_phpsessid: str = ""
 
     # bilibili cookie (暂未启用)
     bilibili_cookie: str = ""
@@ -39,5 +39,5 @@ URL支持Pixiv或者Twitter链接, 后面必须有<b>至少一个</b>tag
 
 config = Settings()
 
-if __name__ == "__main__":
-    print(config.dict())
+# if __name__ == "__main__":
+#     print(config.dict())
