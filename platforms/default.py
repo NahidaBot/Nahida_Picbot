@@ -22,18 +22,19 @@ class GetArtInfoError(Exception):
 class DefaultPlatform:
 
     platform = "default"
-    download_path = f"./downloads/{platform}/"
+    base_downlad_path = "./data/downloads"
+    download_path = f"{base_downlad_path}/{platform}/"
     if not os.path.exists(download_path):
-        os.mkdir(download_path)
+        os.makedirs(download_path)
 
     @classmethod
-    async def get_info_from_gallery_dl(cls, url: str) -> list[list]:
+    async def get_info_from_gallery_dl(cls, url: str) -> list[list[Any]]:
         try:
             # 要执行的命令, 包括 gallery-dl 命令和要下载的图库URL
             command = ["gallery-dl", url, "-j", "-q"]
 
             # 使用subprocess执行命令
-            result: subprocess.CompletedProcess = subprocess.run(
+            result: subprocess.CompletedProcess[str] = subprocess.run(
                 command,
                 check=True,
                 stdout=subprocess.PIPE,
@@ -41,14 +42,14 @@ class DefaultPlatform:
                 text=True,
             )
             logger.debug(result.stdout)
-            logger.debug(f"获取 {cls.platform} 平台图片完成\！")
+            logger.debug(f"获取 {cls.platform} 平台图片完成！")
             return json.loads(result.stdout)
         except Exception as e:
             logger.error(e)
-            raise GetArtInfoError(f"获取 {cls.platform} 平台图片出错\！")
+            raise GetArtInfoError(f"获取 {cls.platform} 平台图片出错！")
     
     @classmethod
-    async def check_duplication(cls, artwork_info: list[list], user: User, post_mode: bool) -> ArtworkResult:
+    async def check_duplication(cls, artwork_info: list[list[Any]], user: User, post_mode: bool) -> ArtworkResult:
         if post_mode and config.bot_deduplication_mode:
             existing_image = check_duplication_via_url(artwork_info[1][1])
             if existing_image:
@@ -64,17 +65,17 @@ class DefaultPlatform:
     async def get_images(
         cls, 
         user: User, 
-        post_mode, 
-        page_count, 
-        artwork_info: list[list], 
+        post_mode: bool, 
+        page_count: int, 
+        artwork_info: list[list[Any]], 
         artwork_meta: dict[str, Any], 
         artwork_result: ArtworkResult
     ) -> list[Image]:
-        images = []
+        images: list[Image] = []
         for i in range(page_count):
             image = artwork_info[i+1]
             if image[0] == 3:
-                image_info: dict = image[2]
+                image_info: dict[str,Any] = image[2]
                 extension = artwork_meta.get("extension") or artwork_meta.get("file_ext")
                 img = Image(
                     userid=user.id,
@@ -89,7 +90,7 @@ class DefaultPlatform:
                         or artwork_meta.get("uploader_id") 
                         or artwork_meta.get("approver_id") 
                         or artwork_meta.get("creator_id") 
-                        or (artwork_meta.get("user") and artwork_meta.get("user").get("id"))
+                        or (artwork_meta.get("user") and artwork_meta.get("user").get("id")) # type: ignore
                     ),
                     r18=artwork_result.is_NSFW,
                     extension=extension or image_info.get("extension") or image_info.get("file_ext"),
@@ -104,11 +105,6 @@ class DefaultPlatform:
                 )
                 img.filename = f"{img.pid}_{img.page}.{img.extension}"
                 images.append(img)
-                # img.size = os.path.getsize(file_path)
-                # r = requests.get(img.url_original_pic)
-                # file_path = cls.download_path + filename
-                # with open(file_path, "wb") as f:
-                #     f.write(r.content)
                 session.add(img)
                 artwork_result.feedback += f'第{i+1}张图片：{img.width}x{img.height}\n'
         return images
@@ -130,7 +126,7 @@ class DefaultPlatform:
 
     @classmethod
     async def get_artworks(
-        cls, url: str, input_tags: list, user: User, post_mode: bool = True
+        cls, url: str, input_tags: list[str], user: User, post_mode: bool = True
     ) -> ArtworkResult:
         try:
             artwork_info = await cls.get_info_from_gallery_dl(url)
@@ -142,35 +138,35 @@ class DefaultPlatform:
             page_count = len(artwork_info) - 1
             artwork_result.feedback = f"""获取成功！\n共有{page_count}张图片\n"""
 
-            artwork_result = await cls.get_tags(input_tags, artwork_info, artwork_result)
-            artwork_meta: dict = artwork_info[0][-1]
+            artwork_meta: dict[str, Any] = artwork_info[0][-1]
             artwork_result.images = await cls.get_images(user, post_mode, page_count, artwork_info, artwork_meta, artwork_result)
+            artwork_result = await cls.get_tags(input_tags, artwork_meta, artwork_result)
 
             tasks = [asyncio.create_task(cls.download_image(image)) for image in artwork_result.images]
             await asyncio.wait(tasks)
             
             session.commit()
-            cls.get_caption(artwork_result, artwork_meta)
+            artwork_result = cls.get_caption(artwork_result, artwork_meta)
             artwork_result.success = True
             return artwork_result
         except:
-            return ArtworkResult(False, "呜呜呜，对不起主人喵，没能成功获取到图片")
+            return ArtworkResult(False, "出错了呜呜呜，对不起主人喵，没能成功获取到图片")
 
     @classmethod
-    def get_caption(cls, artwork_result: ArtworkResult, artwork_meta: list[list]) -> None:
+    def get_caption(cls, artwork_result: ArtworkResult, artwork_meta: dict[str, Any]) -> ArtworkResult:
         caption = ''
         if artwork_meta.get("title"):
-            caption += f"<blockquote>{html_esc(artwork_meta.get("title"))}</blockquote>\n"
+            caption += f"<blockquote>{html_esc(artwork_meta.get("title"))}</blockquote>\n" # type: ignore
         if artwork_result.tags:
             caption += f'Tags: {" ".join(artwork_result.tags)}\n'
         if artwork_result.raw_tags:
             caption += f'<blockquote expandable>Raw Tags: {" ".join(artwork_result.raw_tags)}</blockquote>\n'
         artwork_result.caption = caption
+        return artwork_result
         
 
     @classmethod
-    async def get_tags(cls, input_tags: list[str], artwork_info: list[list], artwork_result: ArtworkResult) -> ArtworkResult:
-        artwork_meta: dict = artwork_info[0][1]
+    async def get_tags(cls, input_tags: list[str], artwork_meta: dict[str, Any], artwork_result: ArtworkResult) -> ArtworkResult:
         raw_tags: list[str] = artwork_meta.get("tags", [])
         raw_tags += artwork_meta.get("characters", [])
         raw_tags += artwork_meta.get("artist", [])
@@ -178,11 +174,17 @@ class DefaultPlatform:
         if isinstance(raw_tags, str):
             raw_tags = raw_tags.split()
         
-        input_set = set()
+        input_set: set[str] = set()
         for tag in input_tags:
             if len(tag) <= 4:
                 tag = tag.upper()
-            input_set.add("#" + html_esc(tag.lstrip("#")))
+            tag = "#" + html_esc(tag.lstrip("#"))
+            input_set.add(tag)
+            session.add(
+                ImageTag(
+                    pid=artwork_meta.get("id") or artwork_meta.get("media_id"), 
+                    tag=tag
+            ))
         
         raw_tags_set: set[str] = set()
         for tag in raw_tags:
