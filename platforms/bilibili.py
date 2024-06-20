@@ -13,11 +13,11 @@ from db import session
 logger = logging.getLogger(__name__)
 
 platform = "bilibili"
-download_path = f"./downloads/{platform}/"
+download_path = f"./data/downloads/{platform}/"
 
 
 if not os.path.exists(download_path):
-    os.mkdir(download_path)
+    os.makedirs(download_path)
 
 
 async def get_post(post_id: int | str) -> dict:
