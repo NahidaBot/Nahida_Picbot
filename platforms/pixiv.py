@@ -1,195 +1,282 @@
+import asyncio
 import os
 import re
-import requests
 import logging
-from time import sleep
+import json
+from datetime import datetime
+from typing import Any, Optional, Union
 
-from pixivpy3 import *
-from retry import retry
-from sqlalchemy import func
-
+# from pixivpy3 import *
+# from retry import retry
 from telegram import User
-from telegram.constants import ParseMode
+import httpx
 
 from config import config
 from entities import Image, ImageTag, ArtworkResult
 from utils.escaper import html_esc
 from utils import check_duplication
 from db import session
-
-platform = "Pixiv"
-download_path = f"./downloads/{platform}/"
-
-if not os.path.exists(download_path):
-    os.mkdir(download_path)
-
-api = AppPixivAPI()
-api.set_accept_language("zh-cn")
-api.auth(refresh_token=config.pixiv_refresh_token)
+from .default import DefaultPlatform
 
 logger = logging.getLogger(__name__)
 
 
-def refresh_token() -> None:
-    api.auth(refresh_token=config.pixiv_refresh_token)
-    sleep(1)
+class Pixiv(DefaultPlatform):
 
+    platform = "Pixiv"
+    download_path = f"{DefaultPlatform.base_downlad_path}/{platform}/"
+    if not os.path.exists(download_path):
+        os.mkdir(download_path)
 
-@retry(tries=3)
-def get_illust(pid: int | str) -> dict:
-    try:
-        illust = api.illust_detail(pid)["illust"]
-        logger.debug(illust)
-        return illust
-    except Exception as e:
-        logger.error("获取失败, 可能是 Pixiv_refresh_token 过期, 正在尝试刷新")
-        refresh_token()
-        raise e
+    headers = {
+        "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+    }
+    cookies = {"Pixiv_PHPSESSID": config.pixiv_phpsessid}
 
+    @classmethod
+    async def get_info_from_web_api(
+        cls, pid: int | str, language: str = ""
+    ) -> dict[str, Any]:
+        """
+        尝试使用 Pixiv Web API 获取作品信息
+        :param language: zh / en
+        示例: ./json_examples/pixiv_web.json
+        """
+        url = f"https://www.pixiv.net/ajax/illust/{pid}"
+        if language == "en":
+            cls.headers["Accept-Language"] = "en"
+        else:
+            cls.headers["Accept-Language"] = "zh-CN,zh;q=0.9"
 
-async def get_artworks(
-    url: str, input_tags: list[str], user: User, post_mode: bool = True
-) -> ArtworkResult:
-    """
-    只有 post_mode 和 config.bot_deduplication_mode 都为 True, 才检测重复
-    """
-    pid = url.strip("/").split("/")[-1]  # 取 PID
+        async with httpx.AsyncClient(http2=True) as client:
+            response = await client.get(url, cookies=cls.cookies, headers=cls.headers)
+            response.raise_for_status()
+            j: dict[str, Any] = response.json()
+            return j["body"]
 
-    illust = get_illust(pid)
+    @classmethod
+    async def get_multi_page(cls, pid: int | str) -> list[dict[str, Any]]:
+        """
+        示例: ./json_examples/pixiv_web_pages.json
+        """
+        url = f"https://www.pixiv.net/ajax/illust/{pid}/pages"
+        async with httpx.AsyncClient(http2=True) as client:
+            response = await client.get(url, cookies=cls.cookies, headers=cls.headers)
+            response.raise_for_status()
+            j: dict[str, Any] = response.json()
+            return j["body"]
 
-    page_count = illust["page_count"]
+    @classmethod
+    async def check_duplication(cls, pid: int | str, user: User, post_mode: bool) -> ArtworkResult:  # type: ignore
+        if post_mode and config.bot_deduplication_mode:
+            existing_image = check_duplication(pid)
+            if existing_image:
+                logger.warning(f"试图发送重复的图片: {cls.platform}" + existing_image)
+                user = User(
+                    existing_image.userid, existing_image.username, is_bot=False
+                )
+                return ArtworkResult(
+                    False,
+                    f"该图片已经由 {user.mention_html()} 于 {str(existing_image.create_time)[:-7]} 发过",
+                )
+        return ArtworkResult(True)
 
-    if post_mode and config.bot_deduplication_mode:
-        existing_image = check_duplication(pid)
-        if existing_image:
-            logger.warning(f"试图发送重复的图片: {platform}" + str(pid))
-            user = User(existing_image.userid, existing_image.username, is_bot=False)
-            return (
-                False,
-                f"该图片已经由 {user.mention_html()} 于 {str(existing_image.create_time)[:-7]} 发过",
-                None,
-                None,
+    @classmethod
+    async def get_artworks(
+        cls, url: str, input_tags: list[str], user: User, post_mode: bool = True
+    ) -> ArtworkResult:
+        """
+        :param url 匹配下列任意一种
+        123456
+        pixiv.net/i/123456
+        http://pixiv.net/i/123456
+        https://pixiv.net/i/123456
+        https://pixiv.net/artworks/123456
+        https://www.pixiv.net/en/artworks/123456
+        https://www.pixiv.net/member_illust.php?mode=medium&illust_id=123456
+        """
+        import re
+
+        reg = re.compile(
+            r"^(https?:\/\/)?(?:www\.)?(?:pixiv\.net\/(?:en\/)?(?:(?:i|artworks)\/|member_illust\.php\?(?:mode=[a-z_]*&)?illust_id=))?(\d+)$"
+        )
+        try:
+            pid: int = int(reg.split(url)[1])
+
+            artwork_meta = await cls.get_info_from_web_api(pid)
+
+            artwork_result = await cls.check_duplication(pid, user, post_mode)
+            if not artwork_result.success:
+                return artwork_result
+
+            page_count: int = artwork_meta["pageCount"]
+            artwork_result.feedback = f"""获取成功！\n共有{page_count}张图片\n"""
+
+            artwork_info: list[dict[str, Any]] = [artwork_meta]
+            if page_count > 1:
+                artwork_info = await cls.get_multi_page(pid)
+
+            artwork_result.images = await cls.get_images(
+                user, post_mode, page_count, artwork_info, artwork_meta, artwork_result
+            )
+            artwork_result = await cls.get_tags(
+                input_tags, artwork_meta, artwork_result
             )
 
-    image_width_height_info = await get_artworks_width_height(pid)
-    msg = f"获取成功！\n" f'<b>{illust["title"]}</b>\n' f"共有{page_count}张图片\n"
+            tasks = [
+                asyncio.create_task(cls.download_image(image))
+                for image in artwork_result.images
+            ]
+            await asyncio.wait(tasks)
 
-    images: list[Image] = []
-    r18: bool = illust["x_restrict"] == 1 or ("#NSFW" in input_tags)
-    ai: bool = False
+            session.commit()
+            artwork_result = cls.get_caption(artwork_result, artwork_meta)
+            artwork_result.success = True
+            return artwork_result
 
-    # tag 处理
-    if not input_tags:
-        input_tags: list[str] = await get_translated_tags(illust["tags"])
-    tags: set = set()
-    for tag in input_tags:
-        tag = "#" + tag.lstrip("#")
-        if len(tag) <= 3:
-            tag = tag.upper()
-        image_tag = ImageTag(pid=pid, tag=tag)
-        session.add(image_tag)
-        tags.add(tag)
-    if r18:
-        tags.add("#NSFW")
-    if illust["illust_ai_type"] == 2 or "#AI" in tags:
-        tags.add("#AI")
-        ai = True
+        except:
+            return ArtworkResult(
+                False, "出错了呜呜呜，对不起主人喵，没能成功获取到图片"
+            )
 
-    meta_pages = illust["meta_pages"]
-    for i in range(page_count):
-        if page_count > 1:
-            url_original_pic: str = meta_pages[i]["image_urls"]["original"]
-        else:
-            url_original_pic: str = illust["meta_single_page"]["original_image_url"]
-        api.download(url_original_pic, path=download_path)
-        filename = url_original_pic.split("/")[-1]
-        file_path = f"./downloads/{platform}/{filename}"
-        file_size = os.path.getsize(file_path)
-        img = Image(
-            userid=user.id,
-            username=user.name,
-            platform=platform,
-            pid=pid,
-            title=illust["title"],
-            page=i,
-            size=file_size,
-            filename=filename,
-            author=illust["user"]["name"],
-            authorid=illust["user"]["id"],
-            r18=r18,
-            extension=url_original_pic.split(".")[-1],
-            url_original_pic=url_original_pic,
-            url_thumb_pic=meta_pages[i]["image_urls"]["large"]
-            if page_count > 1
-            else illust["image_urls"]["large"],
-            post_by_guest=(not post_mode),
-            ai=ai,
+    @classmethod
+    async def get_images(  # type: ignore
+        cls,
+        user: User,
+        post_mode: bool,
+        page_count: int,
+        artwork_info: Optional[list[dict[str, Any]]],
+        artwork_meta: dict[str, Any],
+        artwork_result: ArtworkResult,
+    ) -> list[Image]:
+        images: list[Image] = []
+        assert isinstance(artwork_info, list)
+        for i in range(page_count):
+            image_info: dict[str, Union[dict[str, str], str]] = artwork_info[i]
+            assert isinstance(image_info["urls"], dict)
+            urls: dict[str, str] = image_info["urls"]
+            img = Image(
+                userid=user.id,
+                username=user.name,
+                platform=cls.platform,
+                title=artwork_meta["title"],
+                page=(i + 1),
+                size=None,
+                filename=urls["original"].split("/")[-1],
+                author=artwork_meta["userName"],
+                authorid=artwork_meta["userId"],
+                pid=artwork_meta["id"],
+                extension=urls["original"].split(".")[-1],
+                url_original_pic=urls["original"],
+                url_thumb_pic=urls["regular"],
+                r18=artwork_result.is_NSFW or artwork_meta["restrict"],
+                width=image_info["width"],
+                height=image_info["height"],
+                post_by_guest=(not post_mode),
+                ai=artwork_result.is_AIGC or artwork_meta["aiType"] == 2,
+                full_info=json.dumps(image_info if i else artwork_meta),
+            )
+            images.append(img)
+            session.add(img)
+            assert isinstance(artwork_result.feedback, str)
+            artwork_result.feedback += f"第{i+1}张图片：{img.width}x{img.height}\n"
+        logger.debug(images)
+        return images
+
+    @classmethod
+    def get_caption(
+        cls, artwork_result: ArtworkResult, artwork_meta: dict[str, Any]
+    ) -> ArtworkResult:
+        pid: int = artwork_meta["id"]
+        title: str = artwork_meta["title"]
+        description: str = artwork_meta["description"]
+        uploadDate: datetime = datetime.fromisoformat((artwork_meta["uploadDate"]))
+
+        is_title_included = title in artwork_result.tags
+        artwork_result.caption = (
+            f"<b>{html_esc((title))}</b>\n"
+            if not is_title_included
+            else ""
+            f'<a href="https://pixiv.net/artworks/{pid}">Source</a>'
+            f' by <a href="https://pixiv.net/users/{artwork_meta["userId"]}">Pixiv {artwork_meta["userName"]}</a>\n'
+            f'{" ".join(artwork_result.tags)}\n'
+            f"{uploadDate}"
+            f"<blockquote expandable>Raw Tags: {' '.join(artwork_result.raw_tags)}\n{description}</blockquote>\n"
         )
-        if image_width_height_info:
-            logger.debug(image_width_height_info)
-            img.width = image_width_height_info[i]["width"]
-            img.height = image_width_height_info[i]["height"]
-            msg += f"第{i+1}张图片：{img.width}x{img.height}\n"
-        images.append(img)
-        session.add(img)
-    session.commit()
+        logger.debug(artwork_result)
+        return artwork_result
 
-    caption = (
-        f"<b>{html_esc(images[0].title)}</b>\n"
-        f'<a href="https://www.pixiv.net/artworks/{pid}">Source</a> by <a href="https://www.pixiv.net/users/{images[0].authorid}">Pixiv @{html_esc(images[0].author)}</a>\n'
-        f'{" ".join(tags)}\n'
-    )
-
-    return ArtworkResult(True, msg, caption, images)
-
-
-async def get_artworks_width_height(pid: int) -> list | None:
-    cookies = {"PHPSESSID": config.pixiv_phpsessid}
-    headers = {
-        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36",
-    }
-    try:
-        response = requests.get(
-            f"https://www.pixiv.net/ajax/illust/{pid}/pages",
-            cookies=cookies,
-            headers=headers,
-        )
-        logger.info(response.content)
-        return response.json()["body"]
-    except Exception as e:
-        logger.error("在请求 Pixiv Web API 时发生了一个错误")
-        logger.error(e)
-    return None
-
-
-async def get_translated_tags(tags: list[dict[str, str]]) -> list[str]:
-    PUNCTUATION_PATTERN = r"""[!"$%&'()*+,-./:;<=>?@[\]^`{|}~．！？｡。＂＃＄％＆＇（）＊＋, －／：；＜＝＞＠［＼］＾＿｀｛｜｝～｟｠｢｣､　、〃〈〉《》「」『』【】〔〕〖〗〘〙〚〛〜〝〞〟〰〾〿–—‘’‛“”„‟…‧﹏﹑﹔·]"""
-    logger.debug(tags)
-    CHINESE_REGEXP = "[一-龥]"
-    # https://github.com/xuejianxianzun/PixivBatchDownloader/blob/397c16670bb480810d93bba70bb784bd0707bdee/src/ts/Tools.ts#L399
-    # 如果用户在 Pixiv 的页面语言是中文, 则应用优化策略
-    # 如果翻译后的标签是纯英文, 则判断原标签是否含有至少一部分中文, 如果是则使用原标签
-    # 这是为了解决一些中文标签被翻译成英文的问题, 如 原神 被翻译为 Genshin Impact
-    # 能代(アズールレーン) Noshiro (Azur Lane) 也会使用原标签
-    # 但是如果原标签里没有中文则依然会使用翻译后的标签, 如 フラミンゴ flamingo
-    use_origin_tag = True
-    translated_tags = []
-
-    for tag in tags:
-        if "users入り" in tag["name"]:
-            continue
-        if tag["translated_name"]:
-            use_origin_tag = False
-            if tag["translated_name"].isascii():
-                if re.match(CHINESE_REGEXP, tag["name"]):
-                    use_origin_tag = True
-        tag = tag["name"] if use_origin_tag else tag["translated_name"]
-        if tag:
-            if len(tag.split()) > 3:
-                # 防止出现过长的英文标签
+    @classmethod
+    async def get_tags(
+        cls,
+        input_tags: list[str],
+        artwork_meta: dict[str, Any],
+        artwork_result: ArtworkResult,
+    ) -> ArtworkResult:
+        # https://github.com/xuejianxianzun/PixivBatchDownloader/blob/master/src/ts/Tools.ts#L399-L403
+        # 如果用户在 Pixiv 的页面语言是中文, 则应用优化策略
+        # 如果翻译后的标签是纯英文, 则判断原标签是否含有至少一部分中文, 如果是则使用原标签
+        # 这是为了解决一些中文标签被翻译成英文的问题, 如 原神 被翻译为 Genshin Impact
+        # 能代(アズールレーン) Noshiro (Azur Lane) 也会使用原标签
+        # 但是如果原标签里没有中文则依然会使用翻译后的标签, 如 フラミンゴ flamingo
+        raw_tags: list[dict[str, Any]] = artwork_meta["tags"]
+        tags_translated: list[str] = []
+        tags_all: list[str] = []
+        CHINESE_REGEXP = "[一-龥]"
+        PUNCTUATION_PATTERN = r"""[!"$%&'()*+,-./:;<=>?@[\]^`{|}~．！？｡。＂＃＄％＆＇（）＊＋, －／：；＜＝＞＠［＼］＾＿｀｛｜｝～｟｠｢｣､　、〃〈〉《》「」『』【】〔〕〖〗〘〙〚〛〜〝〞〟〰〾〿–—‘’‛“”„‟…‧﹏﹑﹔·]"""
+        for tag in raw_tags:
+            if "users入り" in tag["tag"]:
                 continue
-            tag = (tag).replace(" ", "_")
-            tag = re.sub(PUNCTUATION_PATTERN, "", tag)
-            translated_tags.append("#" + tag)
-    logger.debug(translated_tags)
-    return translated_tags
+            tags_all.append(html_esc((tag["tag"])))
+            use_origin_tag = False
+            if tag["translation"]["en"].isascii():
+                if re.match(CHINESE_REGEXP, tag["tag"]):
+                    use_origin_tag = True
+            tag_translated: str = (
+                tag["tag"] if use_origin_tag else tag["translation"]["en"]
+            )
+            tag_translated = tag_translated.replace(" ", "_")
+            tag_translated = re.sub(PUNCTUATION_PATTERN, "", tag_translated)
+            tags_translated.append("#" + html_esc(tag_translated))
+
+        artwork_result.raw_tags = list(set(tags_translated + tags_all))
+
+        pid = artwork_result.images[0].id
+
+        input_set: set[str] = set()
+        for tag in input_tags:
+            if len(tag) <= 4:
+                tag = tag.upper()
+            tag = "#" + html_esc(tag.lstrip("#"))
+            input_set.add(tag)
+            session.add(ImageTag(pid=pid, tag=tag))
+
+        all_tags: set[str] = input_set & set(artwork_result.raw_tags)
+        artwork_result.is_AIGC = "#AI" in all_tags
+        artwork_result.is_NSFW = "NSFW" in all_tags
+        artwork_result.tags = sorted(input_set)
+        logger.debug(artwork_result)
+        return artwork_result
+
+
+# api = AppPixivAPI()
+# api.set_accept_language("zh-cn")
+# api.auth(refresh_token=config.pixiv_refresh_token)
+
+
+# def refresh_token() -> None:
+#     api.auth(refresh_token=config.pixiv_refresh_token)
+#     sleep(1)
+
+
+# @retry(tries=3)
+# def get_illust(pid: int | str) -> dict:
+#     try:
+#         illust = api.illust_detail(pid)["illust"]
+#         logger.debug(illust)
+#         return illust
+#     except Exception as e:
+#         logger.error("获取失败, 可能是 Pixiv_refresh_token 过期, 正在尝试刷新")
+#         refresh_token()
+#         raise e
