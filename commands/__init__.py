@@ -2,26 +2,31 @@ import re
 import os
 import json
 import math
-import time
 import asyncio
 import logging
 import datetime
 import subprocess
 
-from typing import Callable
-
-from db import session
+from typing import Callable, Optional, Any
 
 import telegram
-from telegram import Update, BotCommand, Message
+from telegram import (
+    Update,
+    BotCommand,
+    Message,
+    InputMediaDocument,
+    InputMediaPhoto,
+    User,
+)
 from telegram.ext import (
-    Application,
     ContextTypes,
 )
 from telegram.constants import ParseMode
 from config import config
-from platforms import pixiv, twitter, miyoushe, bilibili
+from db import session
 from entities import *
+from platforms import *
+from platforms.pixiv import Pixiv
 from utils import *
 
 MAX_FILE_SIZE = 10 * 1024 * 1024
@@ -42,17 +47,18 @@ class admin:
     class PermissionError(Exception):
         pass
 
-    def __init__(self, func):
+    def __init__(self, func: Callable[...,Any]) -> None:
         self.func = func
 
-    async def __call__(self, *args, **kwargs) -> Callable:
+    async def __call__(self, *args: Any, **kwargs: Any) -> Any:
         logger.debug(args)
         logger.debug(kwargs)
         context: ContextTypes.DEFAULT_TYPE = args[1]
         if not context:
             raise KeyError("Need context!")
         message: Message = args[0].message
-        user = message.from_user
+        assert isinstance(message.from_user, User)
+        user: telegram.User = message.from_user
         if not is_admin(user, context):
             await message.reply_text("你不是管理！再这样我叫大风纪官了喵！")
             raise PermissionError
@@ -62,6 +68,8 @@ class admin:
 
 async def start(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
     user = update.effective_user
+    assert isinstance(user, User)
+    assert isinstance(update.message, Message)
     await update.message.reply_html(
         rf"Hi {user.mention_html()}!",
         # reply_markup=ForceReply(selective=False),
@@ -69,30 +77,33 @@ async def start(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def help_command(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
+    assert isinstance(update.message, Message)
     await update.message.reply_text(config.txt_help, parse_mode=ParseMode.HTML)
-
 
 @admin
 async def post(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
     处理post命令, 直接将投稿发至频道
     """
-    msg = update.message
-    logging.info(msg.text)
+    message = update.message
+    assert isinstance(message, Message)
+    logging.debug(message.text)
 
-    artwork_result = await get_artworks(update.message)
+    artwork_result = await get_artworks(message)
 
     if artwork_result.success:
-        await update.message.reply_chat_action("upload_photo")
+        await message.reply_chat_action("upload_photo")
+        assert isinstance(artwork_result.caption, str)
         artwork_result.caption += config.txt_msg_tail
-        artwork_result = await send_media_group(artwork_result, context=context)
-        await artwork_result.hint_msg.edit_text(artwork_result.feedback, ParseMode.HTML)
+        artwork_result = await send_media_group(context, artwork_result)
+        if artwork_result.hint_msg:
+            await artwork_result.hint_msg.edit_text(artwork_result.feedback, ParseMode.HTML)
     else:
-        await update.message.reply_text(artwork_result.feedback)
+        await message.reply_text(artwork_result.feedback)
 
 
 async def get_artworks(
-    msg: telegram.Message,
+    message: telegram.Message,
     post_mode: bool = True,
     instant_feedback: bool = True,
 ) -> ArtworkResult:
@@ -102,55 +113,58 @@ async def get_artworks(
     """
     artwork_result = ArtworkResult()
     try:
-        splited_msg = msg.text.split()[1:]
+        assert isinstance(message.text, str)
+        splited_msg = message.text.split()[1:]
         post_url = splited_msg[0]
-        tags = splited_msg[1:]
-        user = msg.from_user
+        tags: list[str] = splited_msg[1:]
+        user = message.from_user
+        assert isinstance(user, User)
     except:
         artwork_result.feedback = "笨喵，哪里写错了？再检查一下呢？"
     else:
         if ("pixiv.net/artworks/" in post_url) or re.match(r"[1-9]\d*", post_url):
             if instant_feedback:
-                hint_msg = await msg.reply_text("正在获取 Pixiv 图片喵...")
-            artwork_result = await pixiv.get_artworks(post_url, tags, user, post_mode)
+                hint_msg = await message.reply_text("正在获取 Pixiv 图片喵...")
+            artwork_result = await Pixiv.get_artworks(post_url, tags, user, post_mode)
         elif "twitter" in post_url or "x.com" in post_url:
             if instant_feedback:
-                hint_msg = await msg.reply_text("正在获取 twitter 图片喵...")
+                hint_msg = await message.reply_text("正在获取 twitter 图片喵...")
             post_url = post_url.replace("x.com", "twitter.com")
-            artwork_result = await twitter.get_artworks(post_url, tags, user, post_mode)
+            artwork_result = await Twitter.get_artworks(post_url, tags, user, post_mode)
         elif (
             "miyoushe.com" in post_url
             or "bbs.mihoyo" in post_url
             or "hoyolab" in post_url
         ):
             if instant_feedback:
-                hint_msg = await msg.reply_text("正在获取米游社图片喵...")
+                hint_msg = await message.reply_text("正在获取米游社图片喵...")
             artwork_result = await miyoushe.get_artworks(
                 post_url, tags, user, post_mode
             )
         elif "bilibili.com" in post_url:
             if instant_feedback:
-                hint_msg = await msg.reply_text("正在获取 bilibili 图片喵...")
+                hint_msg = await message.reply_text("正在获取 bilibili 图片喵...")
             artwork_result = await bilibili.get_artworks(
                 post_url, tags, user, post_mode
             )
         else:
             if instant_feedback:
-                hint_msg = await msg.reply_text("检测到神秘的平台喵……\n咱正在试试能不能帮主人获取到，主人不要抱太大期望哦…")
-            from platforms.default import DefaultPlatform
+                hint_msg = await message.reply_text(
+                    "检测到神秘的平台喵……\n咱正在试试能不能帮主人获取到，主人不要抱太大期望哦…"
+                )
             artwork_result = await DefaultPlatform.get_artworks(
                 post_url, tags, user, post_mode
-            ) 
+            )
             # artwork_result.feedback = "没有检测到支持的 URL 喵！主人是不是打错了喵！"
-        artwork_result.hint_msg = hint_msg
+        artwork_result.hint_msg = hint_msg # type: ignore
 
     return artwork_result
 
 
 async def send_media_group(
+    context: ContextTypes.DEFAULT_TYPE,
     artwork_result: ArtworkResult,
     chat_id: int | str = config.bot_channel,
-    context: ContextTypes.DEFAULT_TYPE = None,
 ) -> ArtworkResult:
     """
     发送图片(组)
@@ -159,25 +173,26 @@ async def send_media_group(
     chat_id: 可能是用户 群聊, 如果是发图流程则是默认的发图频道
     context: bot 上下文
     """
-    media_group = []
+    media_group: list[InputMediaPhoto] = []
     for image in artwork_result.images:
-        file_path = f"./downloads/{image.platform}/{image.filename}"
+        file_path = f"./data/downloads/{image.platform}/{image.filename}"
         if not is_within_size_limit(file_path):
             # TODO 可能有潜在的bug，在多图达到压缩阈值时，将压缩后的图片写入了同一路径
             IMG_COMPRESSED = "./downloads/IMG_COMPRESSED.jpg"
             compress_image(file_path, IMG_COMPRESSED)
             file_path = IMG_COMPRESSED
         with open(file_path, "rb") as f:
-            media_group.append(telegram.InputMediaPhoto(f, has_spoiler=image.r18))
+            media_group.append(InputMediaPhoto(f, has_spoiler=image.r18))
     logger.debug(media_group)
 
     # 防打扰, 若干秒内不开启通知音
     disable_notification = False
-    now = datetime.now()
-    context.bot_data["last_msg"] = now
-    interval: datetime.timedelta = now - context.bot_data["last_msg"]
-    if interval.total_seconds() < config.bot_disable_notification_interval:
-        disable_notification = True
+    if chat_id == config.bot_channel:
+        now = datetime.now()
+        context.bot_data["last_msg"] = now
+        interval = now - context.bot_data["last_msg"]
+        if interval.total_seconds() < config.bot_disable_notification_interval:
+            disable_notification = True
 
     # 发图流程 检测到AI图则分流
     if (
@@ -214,7 +229,7 @@ async def send_media_group(
             logger.info(context.bot_data[reply_msg.id])
         artwork_result.images = artwork_result.images[batch_size:]
         # 防止 API 速率限制
-        await asyncio.sleep(5)
+        await asyncio.sleep(3 * batch_size)
 
     artwork_result.feedback += f"\n发送成功了喵！"
     return artwork_result
@@ -223,6 +238,7 @@ async def send_media_group(
 async def get_channel_post(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     # 匹配 bot_data, 匹配到则发送原图, 否则忽略该消息
     logger.info(context.bot_data)
+    assert isinstance(update.message, Message)
     msg: Message = update.message
     # TODO forward_from_message_id 已废弃
     if (
@@ -230,29 +246,30 @@ async def get_channel_post(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         and msg.api_kwargs["forward_from_message_id"] in context.bot_data
     ):
         await update.message.reply_chat_action("upload_document")
-        await post_original_pic(msg, context)
+        await post_original_pic(context, msg)
 
 
 async def post_original_pic(
-    msg: telegram.Message = None,
-    context: ContextTypes.DEFAULT_TYPE = None,
+    context: ContextTypes.DEFAULT_TYPE,
+    message: Optional[telegram.Message] = None,
     chat_id: int | str = config.bot_channel,
-    images: list[Image] = None,
+    images: Optional[list[Image]] = None,  # type: ignore
 ) -> None:
     """
-    msg 与 chat_id, images 互斥, 前者用于捕获频道消息并回复原图, 后者直接发送到指定 chat_id, 目前用于获取图片信息
+    message 与 chat_id, images 互斥, 前者用于捕获频道消息并回复原图, 后者直接发送到指定 chat_id, 目前用于获取图片信息
     """
     if not images:
+        assert isinstance(message, Message)
         images: list[Image] = context.bot_data.pop(
-            msg.api_kwargs["forward_from_message_id"]
+            message.api_kwargs["forward_from_message_id"]
         )
-    media_group = []
+    media_group: list[InputMediaDocument] = []
     for image in images:
         file_path = f"./downloads/{image.platform}/{image.filename}"
         with open(file_path, "rb") as f:
             media_group.append(telegram.InputMediaDocument(f))
-    if msg:
-        await msg.reply_media_group(
+    if message:
+        await message.reply_media_group(
             media=media_group, write_timeout=60, read_timeout=60
         )
     else:
@@ -260,10 +277,11 @@ async def post_original_pic(
             chat_id, media_group, write_timeout=60, read_timeout=60
         )
     # 防止 API 速率限制
-    asyncio.sleep(5)
+    await asyncio.sleep(3 * len(images))
 
 
 async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    assert isinstance(update.message, Message)
     msg = update.message
     logging.info(msg.text)
 
@@ -271,7 +289,7 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if artwork_result.success:
         await update.message.reply_chat_action("upload_photo")
         artwork_result.caption += config.txt_msg_tail
-        await send_media_group(artwork_result, msg.chat_id)
+        await send_media_group(context, artwork_result, msg.chat_id)
     await update.message.reply_chat_action("upload_document")
     await post_original_pic(
         context=context, chat_id=msg.chat_id, images=artwork_result.images
@@ -280,6 +298,7 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 @admin
 async def set_commands(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    assert isinstance(update.message, Message)
     r = await context.bot.set_my_commands(
         [
             BotCommand("post", "(admin)  /post url #tag1 #tag2 发图到频道"),
@@ -295,6 +314,7 @@ async def set_commands(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
 @admin
 async def mark(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    assert isinstance(update.message, Message)
     artwork_result = await get_artworks(update.message, instant_feedback=False)
     if artwork_result.success:
         await update.message.reply_text("标记为已发送了喵！")
@@ -305,24 +325,28 @@ async def mark(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 @admin
 async def unmark(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    assert isinstance(update.message, Message)
+    message = update.message
     try:
-        message = update.message
+        assert isinstance(message.text, str)
         pid = message.text.split()[-1].strip("/").split("/")[-1].split("?")[0]
-        if update.message.reply_to_message:
+        if message.reply_to_message:
             pid = find_url(update.message)[0].strip("/").split("/")[-1]
         unmark_deduplication(pid)
-        await update.message.reply_text("成功从数据库里删掉了喵！")
+        await message.reply_text("成功从数据库里删掉了喵！")
     except Exception as e:
         logger.error(e)
-        await update.message.reply_text("呜呜，出错了喵！服务器熟了！")
+        await message.reply_text("呜呜，出错了喵！服务器熟了！")
 
 
 @admin
 async def repost_orig(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    msg = update.message
+    assert isinstance(msg, Message)
     try:
-        urls = find_url(update.message)
+        urls = find_url(msg)
         if len(urls) == 0:
-            await update.message.reply_text("笨蛋喵！消息里没有 url 喵！")
+            await msg.reply_text("笨蛋喵！消息里没有 url 喵！")
             raise AttributeError
 
         pid = urls[0].strip("/").split("/")[-1]
@@ -333,36 +357,37 @@ async def repost_orig(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
             .all()
         )
 
-        await update.message.reply_chat_action("upload_document")
-        media_group = []
+        await msg.reply_chat_action("upload_document")
+        media_group: list[InputMediaDocument] = []
         for image in images:
-            file_path = f"./downloads/{image.platform}/{image.filename}"
+            file_path = f"./data/downloads/{image.platform}/{image.filename}"
             with open(file_path, "rb") as f:
-                media_group.append(telegram.InputMediaDocument(f))
-        await update.message.reply_to_message.reply_media_group(
+                media_group.append(InputMediaDocument(f))
+        assert isinstance(msg.reply_to_message, Message)
+        await msg.reply_to_message.reply_media_group(
             media_group, write_timeout=60, read_timeout=20
         )
-        await update.message.delete(read_timeout=20)
+        await msg.delete(read_timeout=20)
 
-    except Exception as e:
-        return await update.message.reply_text(
-            "呜呜，获取失败了喵，检查下是不是在原图评论区发的喵！"
-        )
+    except Exception:
+        await msg.reply_text("呜呜，获取失败了喵，检查下是不是在原图评论区发的喵！")
+
 
 @admin
 async def get_admins(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    assert isinstance(update.message, Message)
     chat_id = update.message.chat_id
     await _get_admins(chat_id, context)
     msg_posted = await update.message.reply_text("更新管理员列表成功喵！")
-    time.sleep(3)
+    await asyncio.sleep(3)
     await update.message.delete()
     await msg_posted.delete()
 
 
 async def _get_admins(
     chat_id: int | str,
-    context: ContextTypes.DEFAULT_TYPE = None,
-    application: Application = None,
+    context: Optional[ContextTypes.DEFAULT_TYPE] = None,
+    application: Any = None,
 ) -> None:
     if context:
         # 命令调用
@@ -373,7 +398,7 @@ async def _get_admins(
         context.bot_data["admins"] = admins
     else:
         # 初始化调用
-        admins = [
+        admins: list[int] = [
             admin.user.id
             for admin in await application.bot.get_chat_administrators(chat_id)
         ]
@@ -398,7 +423,7 @@ def is_admin(user: telegram.User, context: ContextTypes.DEFAULT_TYPE) -> bool:
 
 
 # 定义一个异步的初始化函数
-async def on_start(application: Application):
+async def on_start(application: Any):
     # 在这里调用 _get_admins 函数
     await _get_admins(config.bot_channel_comment_group, application=application)
     # 这里还可以添加其他在机器人启动前需要执行的代码
@@ -410,27 +435,29 @@ async def on_start(application: Application):
 async def restart(
     update: Update, context: ContextTypes.DEFAULT_TYPE, update_msg: str = ""
 ) -> None:
-    msg = await update.message.reply_text(update_msg + "正在重启喵，请主人等咱一会儿喵...")
+    assert isinstance(update.message, Message)
+    msg = await update.message.reply_text(
+        update_msg + "正在重启喵，请主人等咱一会儿喵..."
+    )
     with open(restart_data, "w", encoding="utf-8") as f:
         f.write(msg.to_json())
     context.application.stop_running()
 
 
-async def restore_from_restart(application: Application) -> None:
+async def restore_from_restart(application: Any) -> None:
     if os.path.exists(restart_data):
         with open(restart_data) as f:
-            msg: Message = Message.de_json(json.load(f), application.bot)
+            msg: Message = Message.de_json(json.load(f), application.bot)  # type: ignore
             await msg.edit_text("重启成功了喵！")
         os.remove(restart_data)
 
 
 @admin
 async def update(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    assert isinstance(update.message, Message)
     try:
-        command = ["git", "pull"]
-
-        # 使用subprocess执行命令
-        result: subprocess.CompletedProcess = subprocess.run(
+        command = ["git", "pull", "-f"]
+        result: subprocess.CompletedProcess[str] = subprocess.run(
             command,
             check=True,
             stdout=subprocess.PIPE,
@@ -438,8 +465,9 @@ async def update(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             text=True,
         )
         logger.debug(result.stdout)
-        logger.debug("更新成功啦喵！")
+        logger.debug("更新成功了喵！")
     except subprocess.CalledProcessError as e:
-        logger.error("呜呜，更新出错了喵:" + e)
-        return await update.message.reply_text("Update failed! Please check logs.")
-    await restart(update, context, "Update success! ")
+        logger.error("呜呜，更新出错了喵:" + str(e))
+        await update.message.reply_text("呜呜，更新失败了喵，请主人看下日志吧")
+        return
+    await restart(update, context, "更新成功了喵！")
