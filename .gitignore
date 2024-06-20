@@ -1,6 +1,6 @@
-downloads/
-data.db
+data/
 .vscode/
+.DS_Store
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
