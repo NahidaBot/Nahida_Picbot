@@ -110,10 +110,16 @@ class DefaultPlatform:
         return images
 
     @classmethod
-    async def download_image(cls, image: Image) -> None:
+    async def download_image(cls, image: Image, refer: str = "") -> None:
         import httpx
         async with httpx.AsyncClient(http2=True) as client:
-            response = await client.get(image.url_original_pic)
+            headers = {
+                "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+            }
+            if refer:
+                headers["referer"] = refer
+            response = await client.get(image.url_original_pic, headers=headers, timeout=60)
             response.raise_for_status()
             file_path = cls.download_path + image.filename
             if os.path.exists(file_path):
@@ -145,7 +151,7 @@ class DefaultPlatform:
             tasks = [asyncio.create_task(cls.download_image(image)) for image in artwork_result.images]
             await asyncio.wait(tasks)
             
-            session.commit()
+            # session.commit() # 移至 command handler 发出 Image Group 之后
             artwork_result = cls.get_caption(artwork_result, artwork_meta)
             artwork_result.success = True
             return artwork_result
