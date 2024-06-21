@@ -1,0 +1,260 @@
+{
+    "retcode": 0,
+    "message": "OK",
+    "data": {
+        "post": {
+            "post": {
+                "game_id": 2,
+                "post_id": "53147605",
+                "f_forum_id": 28,
+                "uid": "75276539",
+                "subject": "《原神》4.7版本PV：「纺坠终久之梦」",
+                "content": "人们常困于过去的事情。\n那些无法弥补的遗憾，\n那些没能收到回应的疑问，\n或许会在未来得以圆满，\n又或许只能在梦中反复重映。\n\nCV：\n娜维娅——小敢\n克洛琳德——赵涵雨\n小狼——赵涵雨\n赛索斯——李兰陵\n希格雯——赵爽\n荧——宴宁\n戴因斯雷布——孙晔\n空——鹿喑\n",
+                "cover": "https://upload-bbs.miyoushe.com/upload/2024/05/24/75276539/c16833a1659a5e9bfd71952922bd52f4_3299153318858126301.jpg",
+                "view_type": 5,
+                "created_at": 1716555310,
+                "images": [],
+                "post_status": {
+                    "is_top": false,
+                    "is_good": false,
+                    "is_official": true,
+                    "post_status": 0
+                },
+                "topic_ids": [
+                    1818
+                ],
+                "view_status": 1,
+                "max_floor": 1452,
+                "is_original": 0,
+                "republish_authorization": 0,
+                "reply_time": "2024-06-17 23:02:25",
+                "is_deleted": 0,
+                "is_interactive": true,
+                "structured_content": "[{\"insert\":\"人们常困于过去的事情。\\n那些无法弥补的遗憾，\\n那些没能收到回应的疑问，\\n或许会在未来得以圆满，\\n又或许只能在梦中反复重映。\\n\\nCV：\\n娜维娅——小敢\\n克洛琳德——赵涵雨\\n小狼——赵涵雨\\n赛索斯——李兰陵\\n希格雯——赵爽\\n荧——宴宁\\n戴因斯雷布——孙晔\\n空——鹿喑\\n\"},{\"insert\":{\"vod\":{\"id\":\"1793973548449026048\",\"duration\":196300,\"cover\":\"https://upload-bbs.miyoushe.com/upload/2024/05/24/75276539/c16833a1659a5e9bfd71952922bd52f4_3299153318858126301.jpg\",\"resolutions\":[{\"url\":\"https://prod-vod-sign.miyoushe.com/oULKAEOmCsvQLFqEeLQKBegUl4ZOTHIhQtposg?auth_key=1718977377-5d3d9375c3-0-66bca719c07f558994f32fc6dc8d1391\",\"definition\":\"480P\",\"height\":480,\"width\":854,\"bitrate\":477147,\"size\":11708012,\"format\":\"MP4\",\"label\":\"480P\",\"codec\":\"h264\"},{\"url\":\"https://prod-vod-sign.miyoushe.com/o4hsogpOIThECoUBQQ94KALFevLeQxHggR7mEs?auth_key=1718977377-5b44b4f42d-0-296326b6ef40d81d7bc468c8c9961c40\",\"definition\":\"720P\",\"height\":720,\"width\":1280,\"bitrate\":1400537,\"size\":34365689,\"format\":\"MP4\",\"label\":\"720P\",\"codec\":\"h264\"},{\"url\":\"https://prod-vod-sign.miyoushe.com/ogEoAvIgClLeLsHg52FQhUKspe4mABEEpRRmTQ?auth_key=1718977377-29b643c380-0-01a0b74942b7890af306bfbeb52a55bb\",\"definition\":\"1080P\",\"height\":1080,\"width\":1920,\"bitrate\":2933871,\"size\":71989872,\"format\":\"MP4\",\"label\":\"1080P\",\"codec\":\"h264\"}],\"view_num\":418566,\"transcoding_status\":2,\"review_status\":1}}}]",
+                "structured_content_rows": [],
+                "review_id": 0,
+                "is_profit": false,
+                "is_in_profit": false,
+                "updated_at": 1718636545,
+                "deleted_at": 0,
+                "pre_pub_status": 0,
+                "cate_id": 5,
+                "profit_post_status": -2,
+                "audit_status": 0,
+                "meta_content": "{\"describe\":[{\"insert\":\"人们常困于过去的事情。\\n那些无法弥补的遗憾，\\n那些没能收到回应的疑问，\\n或许会在未来得以圆满，\\n又或许只能在梦中反复重映。\\n\\nCV：\\n娜维娅——小敢\\n克洛琳德——赵涵雨\\n小狼——赵涵雨\\n赛索斯——李兰陵\\n希格雯——赵爽\\n荧——宴宁\\n戴因斯雷布——孙晔\\n空——鹿喑\\n\"}],\"vods\":[{\"id\":\"1793973548449026048\"}],\"ActivityMeta\":null}",
+                "is_missing": false,
+                "block_reply_img": 1,
+                "is_showing_missing": false,
+                "block_latest_reply_time": 0,
+                "selected_comment": 2,
+                "is_mentor": false
+            },
+            "forum": {
+                "id": 28,
+                "name": "官方",
+                "icon": "https://upload-bbs.mihoyo.com/upload/2020/04/05/1e49d332b6ca6dc3367801eea655dfdb.png",
+                "game_id": 2,
+                "forum_cate": {
+                    "id": 5,
+                    "name": "官方视频",
+                    "forum_id": 28
+                }
+            },
+            "topics": [
+                {
+                    "id": 1818,
+                    "name": "纺坠终久之梦",
+                    "cover": "https://bbs-static.miyoushe.com/static/2024/05/24/6e739693647d7469103ad7b7b6dc2695_5042172941381561252.png",
+                    "is_top": false,
+                    "is_good": false,
+                    "is_interactive": false,
+                    "game_id": 0,
+                    "content_type": 2
+                }
+            ],
+            "user": {
+                "uid": "75276539",
+                "nickname": "原神",
+                "introduce": "",
+                "avatar": "10011",
+                "gender": 0,
+                "certification": {
+                    "type": 1,
+                    "label": "原神官方账号"
+                },
+                "level_exp": {
+                    "level": 16,
+                    "exp": 150886
+                },
+                "is_following": false,
+                "is_followed": false,
+                "avatar_url": "https://bbs-static.miyoushe.com/avatar/avatar10011.png",
+                "pendant": "",
+                "certifications": [
+                    {
+                        "type": 1,
+                        "label": "原神官方账号"
+                    }
+                ],
+                "is_creator": false,
+                "avatar_ext": {
+                    "avatar_type": 0,
+                    "avatar_assets_id": "",
+                    "resources": [],
+                    "hd_resources": []
+                }
+            },
+            "self_operation": {
+                "attitude": 0,
+                "is_collected": false,
+                "upvote_type": 0
+            },
+            "stat": {
+                "view_num": 789717,
+                "reply_num": 2351,
+                "like_num": 144647,
+                "bookmark_num": 5377,
+                "forward_num": 928,
+                "original_like_num": 144647,
+                "post_upvote_stat": [
+                    {
+                        "upvote_type": 1,
+                        "upvote_cnt": 142807
+                    },
+                    {
+                        "upvote_type": 2,
+                        "upvote_cnt": 370
+                    },
+                    {
+                        "upvote_type": 3,
+                        "upvote_cnt": 364
+                    },
+                    {
+                        "upvote_type": 4,
+                        "upvote_cnt": 427
+                    },
+                    {
+                        "upvote_type": 5,
+                        "upvote_cnt": 679
+                    }
+                ]
+            },
+            "help_sys": null,
+            "cover": {
+                "url": "https://upload-bbs.miyoushe.com/upload/2024/05/24/75276539/c16833a1659a5e9bfd71952922bd52f4_3299153318858126301.jpg",
+                "height": 1080,
+                "width": 1920,
+                "format": "jpg",
+                "size": "1403397",
+                "crop": null,
+                "is_user_set_cover": false,
+                "image_id": "192463325",
+                "entity_type": "IMG_ENTITY_UNKNOWN",
+                "entity_id": "1793973548449026048",
+                "is_deleted": false
+            },
+            "image_list": [
+                {
+                    "url": "https://upload-bbs.miyoushe.com/upload/2024/05/24/75276539/c16833a1659a5e9bfd71952922bd52f4_3299153318858126301.jpg",
+                    "height": 1080,
+                    "width": 1920,
+                    "format": "jpg",
+                    "size": "1403397",
+                    "crop": null,
+                    "is_user_set_cover": false,
+                    "image_id": "192463325",
+                    "entity_type": "IMG_ENTITY_UNKNOWN",
+                    "entity_id": "1793973548449026048",
+                    "is_deleted": false
+                }
+            ],
+            "is_official_master": true,
+            "is_user_master": false,
+            "hot_reply_exist": true,
+            "vote_count": 0,
+            "last_modify_time": 0,
+            "recommend_type": "",
+            "collection": null,
+            "vod_list": [
+                {
+                    "id": "1793973548449026048",
+                    "duration": 196300,
+                    "cover": "https://upload-bbs.miyoushe.com/upload/2024/05/24/75276539/c16833a1659a5e9bfd71952922bd52f4_3299153318858126301.jpg",
+                    "resolutions": [
+                        {
+                            "url": "https://prod-vod-sign.miyoushe.com/oULKAEOmCsvQLFqEeLQKBegUl4ZOTHIhQtposg?auth_key=1718977377-5d3d9375c3-0-66bca719c07f558994f32fc6dc8d1391",
+                            "definition": "480P",
+                            "height": 480,
+                            "width": 854,
+                            "bitrate": 477147,
+                            "size": "11708012",
+                            "format": "MP4",
+                            "label": "480P",
+                            "codec": "h264"
+                        },
+                        {
+                            "url": "https://prod-vod-sign.miyoushe.com/o4hsogpOIThECoUBQQ94KALFevLeQxHggR7mEs?auth_key=1718977377-5b44b4f42d-0-296326b6ef40d81d7bc468c8c9961c40",
+                            "definition": "720P",
+                            "height": 720,
+                            "width": 1280,
+                            "bitrate": 1400537,
+                            "size": "34365689",
+                            "format": "MP4",
+                            "label": "720P",
+                            "codec": "h264"
+                        },
+                        {
+                            "url": "https://prod-vod-sign.miyoushe.com/ogEoAvIgClLeLsHg52FQhUKspe4mABEEpRRmTQ?auth_key=1718977377-29b643c380-0-01a0b74942b7890af306bfbeb52a55bb",
+                            "definition": "1080P",
+                            "height": 1080,
+                            "width": 1920,
+                            "bitrate": 2933871,
+                            "size": "71989872",
+                            "format": "MP4",
+                            "label": "1080P",
+                            "codec": "h264"
+                        }
+                    ],
+                    "view_num": 418566,
+                    "transcoding_status": 2,
+                    "review_status": 1,
+                    "brief_intro": ""
+                }
+            ],
+            "is_block_on": false,
+            "forum_rank_info": null,
+            "link_card_list": [],
+            "news_meta": null,
+            "recommend_reason": {
+                "tags": [
+                    {
+                        "text": "播放十万",
+                        "type": "play_reason",
+                        "deep_link": ""
+                    },
+                    {
+                        "text": "点赞十万",
+                        "type": "like_reason",
+                        "deep_link": ""
+                    },
+                    {
+                        "text": "评论过千",
+                        "type": "comment_reason",
+                        "deep_link": ""
+                    }
+                ],
+                "is_mentor_rec_block": false
+            },
+            "villa_card": null,
+            "is_mentor": false,
+            "villa_room_card": null,
+            "reply_avatar_action_info": {
+                "user_avatar_url_list": [],
+                "total_num": "0"
+            },
+            "challenge": null,
+            "hot_reply_list": [],
+            "villa_msg_image_list": []
+        }
+    }
+}
