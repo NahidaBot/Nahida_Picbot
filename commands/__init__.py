@@ -7,10 +7,12 @@ import logging
 import datetime
 import subprocess
 
-from typing import Callable, Optional, Any
+from typing import Callable, LiteralString, Optional, Any
 
 import telegram
 from telegram import (
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
     Update,
     BotCommand,
     Message,
@@ -30,6 +32,8 @@ from platforms.pixiv import Pixiv
 from utils import *
 
 MAX_FILE_SIZE = 10 * 1024 * 1024
+DATA = "./data"
+DOWNLOADS: LiteralString = f"{DATA}/downloads"
 restart_data = os.path.join(os.getcwd(), "restart.json")
 
 logger = logging.getLogger(__name__)
@@ -47,7 +51,7 @@ class admin:
     class PermissionError(Exception):
         pass
 
-    def __init__(self, func: Callable[...,Any]) -> None:
+    def __init__(self, func: Callable[..., Any]) -> None:
         self.func = func
 
     async def __call__(self, *args: Any, **kwargs: Any) -> Any:
@@ -80,6 +84,7 @@ async def help_command(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
     assert isinstance(update.message, Message)
     await update.message.reply_text(config.txt_help, parse_mode=ParseMode.HTML)
 
+
 @admin
 async def post(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
@@ -97,7 +102,22 @@ async def post(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         artwork_result.caption += config.txt_msg_tail
         artwork_result = await send_media_group(context, artwork_result)
         if artwork_result.hint_msg:
-            await artwork_result.hint_msg.edit_text(artwork_result.feedback, ParseMode.HTML)
+            sent_channel_msg = artwork_result.sent_channel_msg
+            assert sent_channel_msg
+            assert sent_channel_msg.link
+            link = sent_channel_msg.link
+            await artwork_result.hint_msg.edit_text(
+                artwork_result.feedback,
+                ParseMode.HTML,
+                InlineKeyboardMarkup(
+                    [
+                        [
+                            InlineKeyboardButton("跳转到频道➡️", link),
+                            InlineKeyboardButton("转到评论区➡️", link + "?comment=1"),
+                        ]
+                    ]
+                ),
+            )
     else:
         await message.reply_text(artwork_result.feedback)
 
@@ -122,7 +142,7 @@ async def get_artworks(
     except:
         artwork_result.feedback = "笨喵，哪里写错了？再检查一下呢？"
     else:
-        if ("pixiv.net/artworks/" in post_url) or re.match(r"[1-9]\d*", post_url):
+        if ("pixiv" in post_url) or re.match(r"[1-9]\d*", post_url):
             if instant_feedback:
                 hint_msg = await message.reply_text("正在获取 Pixiv 图片喵...")
             artwork_result = await Pixiv.get_artworks(post_url, tags, user, post_mode)
@@ -156,7 +176,7 @@ async def get_artworks(
                 post_url, tags, user, post_mode
             )
             # artwork_result.feedback = "没有检测到支持的 URL 喵！主人是不是打错了喵！"
-        artwork_result.hint_msg = hint_msg # type: ignore
+        artwork_result.hint_msg = hint_msg  # type: ignore
 
     return artwork_result
 
@@ -175,10 +195,10 @@ async def send_media_group(
     """
     media_group: list[InputMediaPhoto] = []
     for image in artwork_result.images:
-        file_path = f"./data/downloads/{image.platform}/{image.filename}"
+        file_path = f"{DOWNLOADS}/{image.platform}/{image.filename}"
         if not is_within_size_limit(file_path):
             # TODO 可能有潜在的bug，在多图达到压缩阈值时，将压缩后的图片写入了同一路径
-            IMG_COMPRESSED = "./downloads/IMG_COMPRESSED.jpg"
+            IMG_COMPRESSED = f"{DOWNLOADS}/IMG_COMPRESSED.jpg"
             compress_image(file_path, IMG_COMPRESSED)
             file_path = IMG_COMPRESSED
         with open(file_path, "rb") as f:
@@ -210,26 +230,31 @@ async def send_media_group(
         if total_page > 1:
             page_count = f"({i+1}/{total_page})\n"
         logger.debug(page_count)
-        reply_msg = await context.bot.send_media_group(
+        reply_msgs = await context.bot.send_media_group(
             chat_id,
             media_group[i * batch_size : (i + 1) * batch_size],
             caption=page_count + artwork_result.caption,
             parse_mode=ParseMode.HTML,
             disable_notification=disable_notification,
         )
-        reply_msg = reply_msg[0]
+        for j in range(len(reply_msgs)):
+            img: Image = artwork_result.images[i * batch_size + j]
+            img.sent_message_link = reply_msgs[j].link
+            img.file_id_thumb = reply_msgs[j].photo[-1].file_id
+        reply_msg = reply_msgs[0]
+        artwork_result.sent_channel_msg = reply_msg
 
-        if (
-            reply_msg
-            and (chat_id == config.bot_channel)
-            or (chat_id == config.bot_enable_ai_redirect_channel)
-        ):
-            # 发原图
-            context.bot_data[reply_msg.id] = artwork_result.images[:batch_size]
-            logger.info(context.bot_data[reply_msg.id])
-        artwork_result.images = artwork_result.images[batch_size:]
+        media_group = media_group[batch_size:]
         # 防止 API 速率限制
         await asyncio.sleep(3 * batch_size)
+
+    if (chat_id == config.bot_channel) or (
+        chat_id == config.bot_enable_ai_redirect_channel
+    ):
+        # 发原图
+        context.bot_data[artwork_result.sent_channel_msg.id] = artwork_result.images
+        logger.info(context.bot_data)
+    # session.commit()
 
     artwork_result.feedback += f"\n发送成功了喵！"
     return artwork_result
@@ -238,9 +263,9 @@ async def send_media_group(
 async def get_channel_post(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     # 匹配 bot_data, 匹配到则发送原图, 否则忽略该消息
     logger.info(context.bot_data)
-    assert isinstance(update.message, Message)
+    if not update.message:
+        return
     msg: Message = update.message
-    # TODO forward_from_message_id 已废弃
     if (
         msg.api_kwargs["forward_from_message_id"]
         and msg.api_kwargs["forward_from_message_id"] in context.bot_data
@@ -265,19 +290,30 @@ async def post_original_pic(
         )
     media_group: list[InputMediaDocument] = []
     for image in images:
-        file_path = f"./downloads/{image.platform}/{image.filename}"
+        file_path = f"{DOWNLOADS}/{image.platform}/{image.filename}"
         with open(file_path, "rb") as f:
             media_group.append(telegram.InputMediaDocument(f))
-    if message:
-        await message.reply_media_group(
-            media=media_group, write_timeout=60, read_timeout=60
-        )
-    else:
-        await context.bot.send_media_group(
-            chat_id, media_group, write_timeout=60, read_timeout=60
-        )
-    # 防止 API 速率限制
-    await asyncio.sleep(3 * len(images))
+
+    MAX_NUM = 10
+    total_page = math.ceil(len(media_group) / MAX_NUM)
+    batch_size = math.ceil(len(media_group) / total_page)
+    for i in range(total_page):
+        if message:
+            reply_msgs = await message.reply_media_group(
+                media=media_group[i * batch_size : (i + 1) * batch_size]
+            )
+        else:
+            reply_msgs = await context.bot.send_media_group(
+                chat_id,
+                media_group[i * batch_size : (i + 1) * batch_size],
+            )
+        for j in range(len(reply_msgs)):
+            img: Image = images[i * batch_size + j]
+            img.file_id_original = reply_msgs[j].document.file_id
+        images = images[batch_size:]
+        # 防止 API 速率限制
+        await asyncio.sleep(3 * batch_size)
+    session.commit()
 
 
 async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -360,7 +396,7 @@ async def repost_orig(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         await msg.reply_chat_action("upload_document")
         media_group: list[InputMediaDocument] = []
         for image in images:
-            file_path = f"./data/downloads/{image.platform}/{image.filename}"
+            file_path = f"{DOWNLOADS}/{image.platform}/{image.filename}"
             with open(file_path, "rb") as f:
                 media_group.append(InputMediaDocument(f))
         assert isinstance(msg.reply_to_message, Message)
