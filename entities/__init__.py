@@ -1,6 +1,6 @@
 from datetime import datetime
 from db import Base, engine
-from telegram import Message
+from telegram import Message, Update
 from sqlalchemy import (
     Column,
     Integer,
@@ -41,6 +41,7 @@ class Image(Base):
         Boolean, default=False
     )  # 是否为 AI 生成 依赖平台返回值 大部分平台未提供接口
     full_info = Column(String)  # 原始 json 数据
+    sent_message_link = Column(String)  # telegram file_id 预览图
     file_id_thumb = Column(String)  # telegram file_id 预览图
     file_id_original = Column(String) # telegram file_id 原图
 
@@ -67,6 +68,7 @@ class ArtworkResult:
         is_AIGC: bool = False,
         tags: list[str] = [],
         raw_tags: list[str] = [],
+        sent_channel_msg: Optional[Message] = None,
     ) -> None:
         """
         success: bool 获取图片是否成功
@@ -84,3 +86,4 @@ class ArtworkResult:
         self.is_AIGC = is_AIGC
         self.tags = tags
         self.raw_tags = raw_tags
+        self.sent_channel_msg = sent_channel_msg
