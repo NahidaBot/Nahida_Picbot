@@ -2,7 +2,6 @@ python-telegram-bot
 pydantic
 pydantic_settings
 sqlalchemy
-pixivpy3
 gallery-dl
 retry
 pillow
