@@ -1,15 +1,15 @@
 from .default import DefaultPlatform
 from .twitter import Twitter
+from .pixiv import Pixiv
+from .miyoushe import MiYouShe
 
 import platforms.bilibili as bilibili
-import platforms.pixiv as pixiv
-import platforms.miyoushe as miyoushe
 
 # 重导出
 __all__ = [
     'DefaultPlatform',
     'Twitter',
-    'pixiv',
+    'Pixiv',
+    'MiYouShe',
     'bilibili',
-    'miyoushe',
 ]

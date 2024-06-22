@@ -28,12 +28,10 @@ from config import config
 from db import session
 from entities import *
 from platforms import *
-from platforms.pixiv import Pixiv
 from utils import *
 
 MAX_FILE_SIZE = 10 * 1024 * 1024
-DATA = "./data"
-DOWNLOADS: LiteralString = f"{DATA}/downloads"
+DOWNLOADS: str = DefaultPlatform.base_downlad_path
 restart_data = os.path.join(os.getcwd(), "restart.json")
 
 logger = logging.getLogger(__name__)
@@ -158,7 +156,7 @@ async def get_artworks(
         ):
             if instant_feedback:
                 hint_msg = await message.reply_text("正在获取米游社图片喵...")
-            artwork_result = await miyoushe.get_artworks(
+            artwork_result = await MiYouShe.get_artworks(
                 post_url, tags, user, post_mode
             )
         elif "bilibili.com" in post_url:
