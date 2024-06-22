@@ -18,6 +18,7 @@ class Settings(BaseSettings):
 
     pixiv_refresh_token: str = ""
     pixiv_phpsessid: str = ""
+    pixiv_device_token: str = ""
 
     # bilibili cookie (暂未启用)
     bilibili_cookie: str = ""
