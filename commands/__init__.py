@@ -7,7 +7,7 @@ import logging
 import datetime
 import subprocess
 
-from typing import Callable, LiteralString, Optional, Any
+from typing import Callable, Optional, Any
 
 import telegram
 from telegram import (
@@ -69,7 +69,23 @@ class admin:
 
 
 async def random(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    pass
+    image = get_random_image()
+    await context.bot.send_photo(
+        update.message.chat_id,
+        InputMediaPhoto('AgACAgUAAx0Cb-wkHgACB5tmdudldZfavgPTIAwjCqadz83TXwACi8IxG8dcuVfipgzHcOC0_gEAAwIAA3kAAzUE', filename='1.jpg'),
+        caption=config.txt_msg_tail,
+        # reply_markup=InlineKeyboardMarkup(
+        #     [
+        #         [
+        #             InlineKeyboardButton("channel", image.sent_message_link),
+        #             InlineKeyboardButton(
+        #                 "original", image.sent_message_link + "?comment=1"
+        #             ),
+        #         ]
+        #     ]
+        # ),
+    )
+
 
 async def start(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
     user = update.effective_user
@@ -177,7 +193,8 @@ async def get_artworks(
                 post_url, tags, user, post_mode
             )
             # artwork_result.feedback = "没有检测到支持的 URL 喵！主人是不是打错了喵！"
-        artwork_result.hint_msg = hint_msg  # type: ignore
+        if hint_msg:
+            artwork_result.hint_msg = hint_msg  # type: ignore
 
     return artwork_result
 
@@ -201,10 +218,9 @@ async def send_media_group(
             continue
         file_path = f"{DOWNLOADS}/{image.platform}/{image.filename}"
         if not is_within_size_limit(file_path):
-            # TODO 可能有潜在的bug，在多图达到压缩阈值时，将压缩后的图片写入了同一路径
-            IMG_COMPRESSED = f"{DOWNLOADS}/IMG_COMPRESSED.jpg"
-            compress_image(file_path, IMG_COMPRESSED)
-            file_path = IMG_COMPRESSED
+            img_compressed = f"{DOWNLOADS}/{image.platform}/compressed_{image.filename}"
+            compress_image(file_path, img_compressed)
+            file_path = img_compressed
         with open(file_path, "rb") as f:
             media_group.append(InputMediaPhoto(f, has_spoiler=image.r18))
     logger.debug(media_group)
@@ -226,6 +242,18 @@ async def send_media_group(
     ):
         chat_id = config.bot_enable_ai_redirect_channel
 
+    # reply_msg = await context.bot.send_photo(
+    #     chat_id,
+    #     media_group[0],
+    #     caption=artwork_result.caption,
+    #     parse_mode=ParseMode.HTML,
+    #     disable_notification=disable_notification,
+    # )
+    # img: Image = artwork_result.images[0]
+    # img.sent_message_link = reply_msg.link
+    # img.file_id_thumb = reply_msg.photo[3].file_id
+    # artwork_result.sent_channel_msg = reply_msg
+
     MAX_NUM = 10
     total_page = math.ceil(len(media_group) / MAX_NUM)
     batch_size = math.ceil(len(media_group) / total_page)
@@ -233,7 +261,6 @@ async def send_media_group(
         page_count = ""
         if total_page > 1:
             page_count = f"({i+1}/{total_page})\n"
-        logger.debug(page_count)
         reply_msgs = await context.bot.send_media_group(
             chat_id,
             media_group[i * batch_size : (i + 1) * batch_size],
@@ -244,7 +271,7 @@ async def send_media_group(
         for j in range(len(reply_msgs)):
             img: Image = artwork_result.images[i * batch_size + j]
             img.sent_message_link = reply_msgs[j].link
-            img.file_id_thumb = reply_msgs[j].photo[-1].file_id
+            img.file_id_thumb = reply_msgs[j].photo[3].file_id
         reply_msg = reply_msgs[0]
         artwork_result.sent_channel_msg = reply_msg
 
@@ -355,31 +382,31 @@ async def set_commands(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     await update.message.reply_text(str(r))
 
 
-@admin
-async def mark(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    assert isinstance(update.message, Message)
-    artwork_result = await get_artworks(update.message, instant_feedback=False)
-    if artwork_result.success:
-        await update.message.reply_text("标记为已发送了喵！")
-    else:
-        await update.message.reply_text("呜呜，标记失败了喵, 主人快看看日志喵")
-        logger.error(artwork_result)
+# @admin
+# async def mark(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+#     assert isinstance(update.message, Message)
+#     artwork_result = await get_artworks(update.message, instant_feedback=False)
+#     if artwork_result.success:
+#         await update.message.reply_text("标记为已发送了喵！")
+#     else:
+#         await update.message.reply_text("呜呜，标记失败了喵, 主人快看看日志喵")
+#         logger.error(artwork_result)
 
 
-@admin
-async def unmark(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    assert isinstance(update.message, Message)
-    message = update.message
-    try:
-        assert isinstance(message.text, str)
-        pid = message.text.split()[-1].strip("/").split("/")[-1].split("?")[0]
-        if message.reply_to_message:
-            pid = find_url(update.message)[0].strip("/").split("/")[-1]
-        unmark_deduplication(pid)
-        await message.reply_text("成功从数据库里删掉了喵！")
-    except Exception as e:
-        logger.error(e)
-        await message.reply_text("呜呜，出错了喵！服务器熟了！")
+# @admin
+# async def unmark(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+#     assert isinstance(update.message, Message)
+#     message = update.message
+#     try:
+#         assert isinstance(message.text, str)
+#         pid = message.text.split()[-1].strip("/").split("/")[-1].split("?")[0]
+#         if message.reply_to_message:
+#             pid = find_url(update.message)[0].strip("/").split("/")[-1]
+#         unmark_deduplication(pid)
+#         await message.reply_text("成功从数据库里删掉了喵！")
+#     except Exception as e:
+#         logger.error(e)
+#         await message.reply_text("呜呜，出错了喵！服务器熟了！")
 
 
 @admin
