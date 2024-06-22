@@ -11,8 +11,7 @@ from telegram import User
 
 from config import config
 from entities import Image, ImageTag, ArtworkResult
-from utils.escaper import html_esc
-from utils import check_duplication_via_url, check_cache
+from utils import check_duplication_via_url, check_cache, html_esc
 from db import session
 
 logger = logging.getLogger(__name__)

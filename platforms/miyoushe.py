@@ -12,7 +12,7 @@ import requests
 from entities import Image, ImageTag, ArtworkResult
 from platforms.default import DefaultPlatform
 from platforms.pixiv import Pixiv
-from utils.escaper import html_esc
+from utils import html_esc
 from db import session
 
 logger = logging.getLogger(__name__)
@@ -177,7 +177,7 @@ class MiYouShe(DefaultPlatform):
     def get_caption(
         cls, artwork_result: ArtworkResult, artwork_meta: dict[str, Any]
     ) -> ArtworkResult:
-        post_id = artwork_result.images[0].id
+        post_id = artwork_result.images[0].pid
         author = artwork_result.images[0].author
         if artwork_result.is_international:
             article_url = f"https://www.hoyolab.com/article/{post_id}"
@@ -209,7 +209,7 @@ class MiYouShe(DefaultPlatform):
         game, _ = cls.get_game(artwork_meta)
         game = '#' + game
 
-        post_id: int = artwork_result.images[0].id
+        post_id: str = artwork_result.images[0].pid
         artwork_result.raw_tags = [ ('#'+topic["name"]) for topic in artwork_meta["topics"] ]
         artwork_result.raw_tags.append(game)
 

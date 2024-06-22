@@ -11,8 +11,7 @@ import httpx
 
 from config import config
 from entities import Image, ImageTag, ArtworkResult
-from utils.escaper import html_esc
-from utils import check_duplication
+from utils import check_duplication, html_esc
 from db import session
 from .default import DefaultPlatform
 
@@ -282,7 +281,7 @@ class Pixiv(DefaultPlatform):
 
         artwork_result.raw_tags = list(set(tags_translated + tags_all))
 
-        pid = artwork_result.images[0].id
+        pid = artwork_result.images[0].pid
 
         input_set: set[str] = set()
         for tag in input_tags:

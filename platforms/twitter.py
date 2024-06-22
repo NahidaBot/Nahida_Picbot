@@ -6,7 +6,7 @@ from typing import Any
 from telegram import User
 
 from entities import Image, ImageTag, ArtworkResult
-from utils.escaper import html_esc
+from utils import html_esc
 from db import session
 from .default import DefaultPlatform
 
@@ -30,7 +30,7 @@ class Twitter(DefaultPlatform):
         artwork_meta: dict[str, Any], 
         artwork_result: ArtworkResult
     ) -> list[Image]:
-        pid: str = artwork_meta["id"]
+        pid: str = artwork_meta["tweet_id"]
         if existing_images := cls.check_cache(pid, post_mode, user):
             artwork_result.cached = True
             return existing_images
@@ -70,7 +70,7 @@ class Twitter(DefaultPlatform):
 
     @classmethod
     def get_caption(cls, artwork_result: ArtworkResult, artwork_meta: dict[str, Any]) -> ArtworkResult:
-        tweet_id = artwork_result.images[0].id
+        tweet_id = artwork_result.images[0].pid
         tweet_author = artwork_result.images[0].author
         tweet_author_url = f"https://twitter.com/{tweet_author}"
         tweet_url = f"{tweet_author_url}/status/{tweet_id}"
@@ -93,7 +93,7 @@ class Twitter(DefaultPlatform):
         # twitter tag 一般情况下完全符合 telegram hashtag 规则
         artwork_result.raw_tags = artwork_meta["hashtags"]
 
-        tweet_id = artwork_result.images[0].id
+        tweet_id = artwork_result.images[0].pid
 
         input_set: set[str] = set()
         for tag in input_tags:

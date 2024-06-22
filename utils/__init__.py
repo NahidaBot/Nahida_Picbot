@@ -4,7 +4,7 @@ import os
 from typing import Optional
 import PIL.Image
 from db import session
-from sqlalchemy import desc
+from sqlalchemy import func
 from entities import Image
 from telegram import Message
 
@@ -12,6 +12,28 @@ logger = logging.getLogger(__name__)
 
 MAX_SIDE = 2560
 MAX_FILE_SIZE = 10 * 1024 * 1024
+
+
+"""
+转义标题、描述等字符串, 防止与 telegram markdown_v2 或 telegram html 符号冲突
+"""
+def md_esc(markdownv2_str: str) -> str:
+    """
+    Telegram 的 Markdown 格式, 只有 v2 才支持元素嵌套, 同时需要在正文中对以下字符进行额外的转义。
+    详见：https://core.telegram.org/bots/api#formatting-options
+    """
+    chars = "_*[]()~`>#+-=|{}.!"
+    for char in chars:
+        markdownv2_str = markdownv2_str.replace(char, "\\" + char)
+    return markdownv2_str
+
+
+def html_esc(html_str: str) -> str:
+    """
+    Telegram 的 HTML 格式
+    详见：https://core.telegram.org/bots/api#formatting-options
+    """
+    return html_str.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
 def compress_image(
@@ -88,6 +110,8 @@ def check_cache(pid: str, platform: str) -> Optional[list[Image]]:
     logger.debug(image)
     return image
 
+def get_random_image() -> Image:
+    return session.query(Image).order_by(func.random()).first()
 
 def unmark_deduplication(pid: int | str) -> None:
     """
