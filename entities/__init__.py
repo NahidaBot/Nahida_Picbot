@@ -69,6 +69,7 @@ class ArtworkResult:
         tags: list[str] = [],
         raw_tags: list[str] = [],
         sent_channel_msg: Optional[Message] = None,
+        is_international: bool = False,
     ) -> None:
         """
         用于在调用中传递一些 ~~脏~~ 东西
@@ -93,3 +94,4 @@ class ArtworkResult:
         self.tags = tags
         self.raw_tags = raw_tags
         self.sent_channel_msg = sent_channel_msg
+        self.is_international = is_international

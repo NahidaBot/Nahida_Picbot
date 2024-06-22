@@ -1,0 +1,315 @@
+{
+    "retcode": 0,
+    "message": "OK",
+    "data": {
+        "post": {
+            "post": {
+                "game_id": 6,
+                "post_id": "30083385",
+                "f_forum_id": 0,
+                "uid": "98791928",
+                "subject": "银枝……Ragnvindr？",
+                "content": "{\"describe\":\"我不太喜欢迪卢克，但我不得不承认他很漂亮，而且他的服装非常适合我们的美貌骑士\\n\\n这个编辑花了两秒钟哈哈，我只是很好奇。我甚至不想发布这个，但后来我说，呃，为什么不呢。\\n\\n再次，质量太差了，我很抱歉\",\"imgs\":[\"https: //upload-os-bbs.hoyolab.com/upload/2024/06/20/98791928/189bad1e95c7a8f9d068eae084011ea5_3994722655221840725.png\"]}",
+                "cover": "",
+                "view_type": 2,
+                "created_at": 1718895037,
+                "images": [],
+                "post_status": {
+                    "is_top": false,
+                    "is_good": false,
+                    "is_official": false,
+                    "is_vote": false,
+                    "is_quiz_vote": false
+                },
+                "topic_ids": [
+                    504372
+                ],
+                "view_status": 1,
+                "max_floor": 13,
+                "is_original": 1,
+                "republish_authorization": 2,
+                "reply_time": "2024-06-22 02:16:35",
+                "is_deleted": 0,
+                "is_interactive": false,
+                "structured_content": "",
+                "structured_content_rows": [],
+                "lang": "zh-cn",
+                "official_type": 0,
+                "reply_forbid": {
+                    "date_type": 0,
+                    "start_date": "0",
+                    "cur_date": "0",
+                    "level": 0
+                },
+                "video": "",
+                "contribution_id": "0",
+                "event_start_date": "0",
+                "event_end_date": "0",
+                "classification_id": "13",
+                "is_audit": false,
+                "is_multi_language": false,
+                "origin_lang": "en-us",
+                "sub_type": 0,
+                "reprint_source": "",
+                "can_edit": true,
+                "last_modify_time": 0,
+                "multi_language_info": null,
+                "visible_level": 1,
+                "has_cover": false,
+                "suid": "0",
+                "desc": "我不太喜欢迪卢克，但我不得不承认他很漂亮，而且他的服装非常适合我们的美貌骑士\n\n这个编辑花了两秒钟哈哈，我只是很好奇。我甚至不想发布这个，但后来我说，呃，为什么不呢。\n\n再次，质量太差了，我很抱歉"
+            },
+            "forum": null,
+            "topics": [
+                {
+                    "id": 504372,
+                    "name": "银枝",
+                    "cover": "https://upload-os-bbs.hoyolab.com/upload/2024/04/03/c1e271e94c06b6895f118927357ca704_1651870850555489349.png",
+                    "is_top": false,
+                    "is_good": false,
+                    "is_interactive": false,
+                    "game_id": 6,
+                    "add_by": 0,
+                    "entry_style": 0,
+                    "can_bind_all_game": false,
+                    "entry_style_start_at": "0"
+                }
+            ],
+            "user": {
+                "uid": "98791928",
+                "nickname": "Hanikamu81",
+                "introduce": "{he/they} ~•~ following the path of trailblaze since 2023 ~•~",
+                "avatar": "-1",
+                "gender": 0,
+                "certification": null,
+                "level_exp": {
+                    "level": 1,
+                    "exp": 0
+                },
+                "is_following": false,
+                "is_followed": false,
+                "avatar_url": "https://upload-os-bbs.hoyolab.com/upload/2024/06/08/98791928/0c9f0eb6ad4871d083376b064b571338_5314320598975625329.jpg",
+                "auth": null,
+                "is_logoff": false,
+                "pendant": "https://upload-os-bbs.hoyolab.com/upload/2024/06/14/afcdd3b315027489eda7c57d1df0e02d_5155936239236796221.png?x-oss-process=image/auto-orient,0/interlace,1/format,webp/quality,q_70",
+                "was_following": false,
+                "post_num": 18,
+                "suid": "0",
+                "black_relation": {
+                    "is_blacking": false,
+                    "is_blacked": false
+                },
+                "badge": {
+                    "id": "20003",
+                    "level": 3,
+                    "icon_url": "https://fastcdn.hoyoverse.com/static-resource-v2/2023/11/20/05a59ae62691830e90040bce929e5a05_481473385811689265.png",
+                    "badge_app_path": "hoyolab://openURL?url=https%3A%2F%2Fact.hoyolab.com%2Fhoyolab-subsite%2F%3Fhyl_presentation_style%3Dfullscreen%23%2FachievementCenter%3Ftarget_uid%3D98791928%26achieve_id%3D20003%26achieve_level%3D3%26show_type%3D2",
+                    "badge_web_path": "/achievementCenter?target_uid=98791928\u0026achieve_id=20003\u0026achieve_level=3\u0026show_type=2",
+                    "center_app_path": "",
+                    "center_web_path": "",
+                    "total": 0
+                },
+                "lantern": null
+            },
+            "self_operation": {
+                "attitude": 0,
+                "is_collected": false
+            },
+            "stat": {
+                "view_num": 9085,
+                "reply_num": 14,
+                "like_num": 432,
+                "bookmark_num": 86,
+                "share_num": 0,
+                "view_num_unit": "",
+                "reply_num_unit": "",
+                "like_num_unit": "",
+                "bookmark_num_unit": "",
+                "share_num_unit": "",
+                "true_view_num": 0,
+                "click_view_num": 0,
+                "summary_for_creator": null,
+                "multi_upvote_stats": [
+                    {
+                        "upvote_id": "1",
+                        "upvote_num": 417
+                    },
+                    {
+                        "upvote_id": "2",
+                        "upvote_num": 9
+                    },
+                    {
+                        "upvote_id": "4",
+                        "upvote_num": 3
+                    },
+                    {
+                        "upvote_id": "6",
+                        "upvote_num": 3
+                    }
+                ],
+                "self_operation": null
+            },
+            "help_sys": null,
+            "cover": null,
+            "image_list": [
+                {
+                    "url": "https://upload-os-bbs.hoyolab.com/upload/2024/06/20/98791928/189bad1e95c7a8f9d068eae084011ea5_3994722655221840725.png",
+                    "height": 1892,
+                    "width": 720,
+                    "format": "PNG",
+                    "size": "1069234",
+                    "spoiler": false,
+                    "cuts": [
+                        {
+                            "ratio": 4,
+                            "lt_point": {
+                                "x": 0,
+                                "y": 56
+                            },
+                            "rb_point": {
+                                "x": 719,
+                                "y": 461
+                            }
+                        },
+                        {
+                            "ratio": 1,
+                            "lt_point": {
+                                "x": 0,
+                                "y": 56
+                            },
+                            "rb_point": {
+                                "x": 719,
+                                "y": 1016
+                            }
+                        },
+                        {
+                            "ratio": 2,
+                            "lt_point": {
+                                "x": 0,
+                                "y": 56
+                            },
+                            "rb_point": {
+                                "x": 719,
+                                "y": 596
+                            }
+                        },
+                        {
+                            "ratio": 3,
+                            "lt_point": {
+                                "x": 0,
+                                "y": 56
+                            },
+                            "rb_point": {
+                                "x": 719,
+                                "y": 776
+                            }
+                        }
+                    ],
+                    "tag_info": {
+                        "is_long_picture": false
+                    },
+                    "template_info": null,
+                    "image_id": "79649735"
+                }
+            ],
+            "is_official_master": false,
+            "is_user_master": false,
+            "hot_reply_exist": true,
+            "vote_count": 0,
+            "last_modify_time": 0,
+            "contribution": null,
+            "classification": {
+                "id": "13",
+                "name": "同人创作",
+                "icon": ""
+            },
+            "video": null,
+            "game": {
+                "game_id": 6,
+                "game_name": "崩坏：星穹铁道",
+                "color": "#25A0E7",
+                "background_color": "#F3E9C8",
+                "icon": ""
+            },
+            "data_box": "",
+            "is_top_icon": false,
+            "tags": {
+                "is_user_top": false,
+                "is_qualified_post": false,
+                "is_hot_entry_post": false,
+                "hot_topic_idx": 0
+            },
+            "hot_reply": null,
+            "collection": null,
+            "is_rich_text": false,
+            "catalog_style_hint": 0,
+            "cover_list": [
+                {
+                    "url": "https://upload-os-bbs.hoyolab.com/upload/2024/06/20/98791928/189bad1e95c7a8f9d068eae084011ea5_3994722655221840725.png",
+                    "height": 1892,
+                    "width": 720,
+                    "format": "PNG",
+                    "size": "1069234",
+                    "spoiler": false,
+                    "cuts": [
+                        {
+                            "ratio": 4,
+                            "lt_point": {
+                                "x": 0,
+                                "y": 56
+                            },
+                            "rb_point": {
+                                "x": 719,
+                                "y": 461
+                            }
+                        },
+                        {
+                            "ratio": 1,
+                            "lt_point": {
+                                "x": 0,
+                                "y": 56
+                            },
+                            "rb_point": {
+                                "x": 719,
+                                "y": 1016
+                            }
+                        },
+                        {
+                            "ratio": 2,
+                            "lt_point": {
+                                "x": 0,
+                                "y": 56
+                            },
+                            "rb_point": {
+                                "x": 719,
+                                "y": 596
+                            }
+                        },
+                        {
+                            "ratio": 3,
+                            "lt_point": {
+                                "x": 0,
+                                "y": 56
+                            },
+                            "rb_point": {
+                                "x": 719,
+                                "y": 776
+                            }
+                        }
+                    ],
+                    "tag_info": {
+                        "is_long_picture": false
+                    },
+                    "template_info": null,
+                    "image_id": "79649735"
+                }
+            ],
+            "cut_type": 3,
+            "shows_game_classification": false,
+            "vote": null,
+            "hot_reply_v2": null,
+            "feedback": null,
+            "reply_quick_source": []
+        }
+    }
+}

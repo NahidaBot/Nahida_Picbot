@@ -69,6 +69,12 @@ class MiYouShe(DefaultPlatform):
         x_oss_process = "?x-oss-process=image//resize,l_2560/quality,q_100/auto-orient,0/interlace,1/format,jpg"
         for i in range(page_count):
             image_info: dict[str, Any] = artwork_info[i]
+            extension = image_info["format"]
+            if artwork_result.is_international:
+                if extension == "JPEG":
+                    extension = 'jpg'
+                elif extension == 'PNG':
+                    extension = 'png'
             img = Image(
                 userid=user.id,
                 username=user.name,
@@ -76,11 +82,11 @@ class MiYouShe(DefaultPlatform):
                 title=artwork_meta["post"]["subject"],
                 page=(i + 1),
                 size=int(image_info["size"]),
-                filename=f'{artwork_meta["post"]["post_id"]}_{i+1}.{image_info["format"]}',
+                filename=f'{artwork_meta["post"]["post_id"]}_{i+1}.{extension}',
                 author=artwork_meta["user"]["nickname"],
                 authorid=artwork_meta["user"]["uid"],
                 pid=artwork_meta["post"]["post_id"],
-                extension=image_info["format"],
+                extension=extension,
                 url_original_pic=image_info["url"],
                 url_thumb_pic=(image_info["url"]+x_oss_process),
                 r18=False,
@@ -118,14 +124,19 @@ class MiYouShe(DefaultPlatform):
             reg = re.compile(
                 r"^(?:https?:\/\/)?(?:www\.)?(?:(?:miyoushe|hoyolab|bbs.mihoyo)\.com\/(?:[a-z]+\/)?)article\/(\d+)"
             )
+            is_global = False
             post_id = reg.split(url)[1]
-            artwork_meta = await cls.get_post(post_id, False)
+            if 'hoyolab' in url:
+                is_global = True
+            artwork_meta = await cls.get_post(post_id, is_global)
             assert artwork_meta
             image_list: list[dict[str, Any]] = artwork_meta["image_list"]
 
             artwork_result = await cls.check_duplication(post_id, user, post_mode)
             if not artwork_result.success:
                 return artwork_result
+            elif is_global:
+                artwork_result.is_international = True
 
             page_count = len(image_list)
             if not page_count:
@@ -163,15 +174,20 @@ class MiYouShe(DefaultPlatform):
     ) -> ArtworkResult:
         post_id = artwork_result.images[0].id
         author = artwork_result.images[0].author
-        _, url_path = cls.get_game(artwork_meta)
-        article_url = f"https://www.miyoushe.com/{url_path}/article/{post_id}"
-        author_url = f"https://www.miyoushe.com/{url_path}/accountCenter/postList?id={artwork_result.images[0].authorid}"
-        article_context: str = artwork_meta["post"]["content"]
+        if artwork_result.is_international:
+            article_url = f"https://www.hoyolab.com/article/{post_id}"
+            author_url = f"https://www.hoyolab.com/accountCenter?id={artwork_result.images[0].authorid}"
+            article_context: str = artwork_meta["post"]["desc"]
+        else:
+            _, url_path = cls.get_game(artwork_meta)
+            article_url = f"https://www.miyoushe.com/{url_path}/article/{post_id}"
+            author_url = f"https://www.miyoushe.com/{url_path}/accountCenter/postList?id={artwork_result.images[0].authorid}"
+            article_context: str = artwork_meta["post"]["content"]
         created_at = datetime.fromtimestamp(artwork_meta["post"]["created_at"])
         artwork_result.caption = (
             f"<b>{html_esc(artwork_meta["post"]["subject"])}</b>\n"
             f'<a href="{article_url}">Source</a>'
-            f' by <a href="{author_url}">米游社 @{author}</a>\n'
+            f' by <a href="{author_url}">{"HoYoLab" if artwork_result.is_international else "米游社"} @{author}</a>\n'
             f"<blockquote expandable>{article_context+'\n' if article_context else ''}"
             f"Topics: {' '.join(artwork_result.raw_tags)}\n{created_at.strftime('%Y-%m-%d %H:%M:%S')}</blockquote>\n"
         )
@@ -240,99 +256,3 @@ class MiYouShe(DefaultPlatform):
             case _:
                 raise Exception("未知分区")
         return name, url_path
-
-
-# async def get_artworks(
-#     url: str, input_tags: list, user: User, post_mode: bool = True
-# ) -> ArtworkResult:
-#     """
-#     只有 post_mode 和 config.bot_deduplication_mode 都为 True, 才检测重复
-#     """
-#     id = url.strip("/").split("/")[-1]
-#     is_global = "hoyolab" in url
-
-#     post_json = await get_post(id, is_global)
-#     image_list: list = post_json["image_list"]
-#     post_info = post_json["post"]
-#     page_count = len(image_list)
-#     title = post_info["subject"]
-#     r18 = False
-#     ai: bool = False
-#     x_oss_process = "?x-oss-process=image//resize,l_2560/quality,q_100/auto-orient,0/interlace,1/format,jpg"
-#     msg = f"获取成功！\n" f"<b>{title}</b>\n" f"共有{page_count}张图片\n"
-
-#     if post_mode and config.bot_deduplication_mode:
-#         existing_image = check_duplication(id)
-#         if existing_image:
-#             logger.warning(f"试图发送重复的图片: {platform}" + str(id))
-#             user = User(existing_image.userid, existing_image.username, is_bot=False)
-#             return (
-#                 False,
-#                 f"该图片已经由 {user.mention_html()} 于 {str(existing_image.create_time)[:-7]} 发过",
-#                 None,
-#                 None,
-#             )
-
-#     tag_game, url_path = get_game(post_info)
-#     tags: set[str] = set()
-#     for tag in input_tags:
-#         tag = "#" + tag.strip("#")
-#         if len(tag) <= 3:
-#             tag = tag.upper()
-#         image_tag = ImageTag(pid=id, tag=tag)
-#         session.add(image_tag)
-#         tags.add(tag)
-#     tags.add("#" + tag_game)
-#     if "#AI" in tags:
-#         tags.add("#AI")
-#         ai = True
-
-#     images: list[Image] = []
-#     for i in range(page_count):
-#         if is_global:
-#             extension: str = image_list[i]["url"].split("/")[-1].split(".")[-1]
-#         else:
-#             extension = image_list[i]["format"]
-#         filename: str = f"{id}_{i+1}.{extension}"
-#         await download(image_list[i]["url"], download_path, filename)
-#         image = Image(
-#             userid=user.id,
-#             username=user.name,
-#             platform=platform,
-#             pid=id,
-#             title=title,
-#             page=i,
-#             size=image_list[i]["size"],
-#             filename=filename,
-#             author=post_json["user"]["nickname"],
-#             authorid=post_json["user"]["uid"],
-#             r18=r18,
-#             extension=extension,
-#             url_original_pic=image_list[i]["url"],
-#             url_thumb_pic=image_list[i]["url"] + x_oss_process,
-#             post_by_guest=(not post_mode),
-#             width=image_list[i]["width"],
-#             height=image_list[i]["height"],
-#             ai=ai,
-#         )
-#         images.append(image)
-#         session.add(image)
-#         msg += f"第{i+1}张图片：{image.width}x{image.height}\n"
-#     session.commit()
-
-#     if is_global:
-#         article_url = f"https://www.hoyolab.com/article/{id}"
-#         author_url = (
-#             f"https://www.hoyolab.com/accountCenter?id={post_json['user']['uid']}"
-#         )
-#     else:
-#         article_url = f"https://www.miyoushe.com/{url_path}/article/{id}"
-#         author_url = f"https://www.miyoushe.com/{url_path}/accountCenter/postList?id={images[0].authorid}"
-
-#     caption = (
-#         f"<b>{html_esc(images[0].title)}</b>\n"
-#         f'<a href="{article_url}">Source</a> by <a href="{author_url}">{"HoYoLab" if is_global else "米游社"} @{html_esc(images[0].author)}</a>\n'
-#         f'{" ".join(tags)}\n'
-#     )
-
-#     return ArtworkResult(True, msg, caption, images)
