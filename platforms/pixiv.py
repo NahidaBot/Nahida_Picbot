@@ -26,11 +26,10 @@ class Pixiv(DefaultPlatform):
     if not os.path.exists(download_path):
         os.mkdir(download_path)
 
-    headers = {
-        "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+    cookies = {
+        'PHPSESSID': config.pixiv_phpsessid,
+        'device_token': config.pixiv_device_token,
     }
-    cookies = {"Pixiv_PHPSESSID": config.pixiv_phpsessid}
 
     @classmethod
     async def get_info_from_web_api(
@@ -42,13 +41,19 @@ class Pixiv(DefaultPlatform):
         示例: ./json_examples/pixiv_web.json
         """
         url = f"https://www.pixiv.net/ajax/illust/{pid}"
+        headers = {
+            "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+        }
         if language == "en":
-            cls.headers["Accept-Language"] = "en"
+            headers["Accept-Language"] = "en"
         else:
-            cls.headers["Accept-Language"] = "zh-CN,zh;q=0.9"
-        
+            headers["Accept-Language"] = "zh-CN,zh;q=0.9"
+
         async with httpx.AsyncClient(http2=True) as client:
-            response = await client.get(url, cookies=cls.cookies, headers=cls.headers)
+            response = await client.get(
+                url, cookies=cls.cookies, headers=headers, timeout=30
+            )
             response.raise_for_status()
             j: dict[str, Any] = response.json()
             logger.debug(j)
@@ -60,8 +65,25 @@ class Pixiv(DefaultPlatform):
         示例: ./json_examples/pixiv_web_pages.json
         """
         url = f"https://www.pixiv.net/ajax/illust/{pid}/pages"
+        headers = {
+            'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+            'accept-language': 'zh-CN,zh;q=0.9,en;q=0.8',
+            'cache-control': 'max-age=0',
+            'dnt': '1',
+            'priority': 'u=0, i',
+            'sec-ch-ua': '"Not/A)Brand";v="8", "Chromium";v="126", "Google Chrome";v="126"',
+            'sec-ch-ua-mobile': '?0',
+            'sec-ch-ua-platform': '"macOS"',
+            'sec-fetch-dest': 'document',
+            'sec-fetch-mode': 'navigate',
+            'sec-fetch-site': 'cross-site',
+            'sec-fetch-user': '?1',
+            'upgrade-insecure-requests': '1',
+            'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+        }
         async with httpx.AsyncClient(http2=True) as client:
-            response = await client.get(url, cookies=cls.cookies, headers=cls.headers)
+            # await asyncio.sleep(0.5)
+            response = await client.get(url, headers=headers, cookies=cls.cookies)
             response.raise_for_status()
             j: dict[str, Any] = response.json()
             return j["body"]
@@ -119,20 +141,21 @@ class Pixiv(DefaultPlatform):
             artwork_result.images = await cls.get_images(
                 user, post_mode, page_count, artwork_info, artwork_meta, artwork_result
             )
-            artwork_result = await cls.get_tags(
+            artwork_result: ArtworkResult = await cls.get_tags(
                 input_tags, artwork_meta, artwork_result
             )
             artwork_result = await cls.get_en_tags(
                 input_tags, artwork_meta_en, artwork_result
             )
 
-            tasks = [
-                asyncio.create_task(
-                    cls.download_image(image, refer="https://www.pixiv.net/")
-                )
-                for image in artwork_result.images
-            ]
-            await asyncio.wait(tasks)
+            if not artwork_result.cached:
+                tasks = [
+                    asyncio.create_task(
+                        cls.download_image(image, refer="https://www.pixiv.net/")
+                    )
+                    for image in artwork_result.images
+                ]
+                await asyncio.wait(tasks)
 
             # session.commit() # 移至 command handler 发出 Image Group 之后
             artwork_result = cls.get_caption(artwork_result, artwork_meta)
@@ -155,6 +178,10 @@ class Pixiv(DefaultPlatform):
         artwork_meta: dict[str, Any],
         artwork_result: ArtworkResult,
     ) -> list[Image]:
+        pid: str = artwork_meta["id"]
+        if existing_images := cls.check_cache(pid, post_mode, user):
+            artwork_result.cached = True
+            return existing_images
         images: list[Image] = []
         assert isinstance(artwork_info, list)
         for i in range(page_count):
@@ -171,7 +198,7 @@ class Pixiv(DefaultPlatform):
                 filename=urls["original"].split("/")[-1],
                 author=artwork_meta["userName"],
                 authorid=artwork_meta["userId"],
-                pid=artwork_meta["id"],
+                pid=pid,
                 extension=urls["original"].split(".")[-1],
                 url_original_pic=urls["original"],
                 url_thumb_pic=urls["regular"],
@@ -195,11 +222,15 @@ class Pixiv(DefaultPlatform):
     ) -> ArtworkResult:
         pid: int = artwork_meta["id"]
         title: str = artwork_meta["title"]
-        description: str = artwork_meta["description"]
+        description: str = html_esc(
+            artwork_meta["extraData"]["meta"]["twitter"]["description"]
+        )
         uploadDate: datetime = datetime.fromisoformat((artwork_meta["uploadDate"]))
 
-        title_sharp = '#'+title
-        is_title_included = (title_sharp in artwork_result.raw_tags) or (title_sharp in artwork_result.tags)
+        title_sharp = "#" + title
+        is_title_included = (title_sharp in artwork_result.raw_tags) or (
+            title_sharp in artwork_result.tags
+        )
         title = f"<b>{html_esc((title))}</b>\n" if not is_title_included else ""
         artwork_result.caption = (
             f"{title}"
@@ -257,7 +288,8 @@ class Pixiv(DefaultPlatform):
         for tag in input_tags:
             tag = "#" + html_esc(tag.lstrip("#"))
             input_set.add(tag)
-            session.add(ImageTag(pid=pid, tag=tag))
+            if not artwork_result.cached:
+                session.add(ImageTag(pid=pid, tag=tag))
 
         all_tags: set[str] = input_set & set(artwork_result.raw_tags)
         artwork_result.is_AIGC = "#AI" in all_tags
@@ -283,9 +315,7 @@ class Pixiv(DefaultPlatform):
             use_origin_tag = True
             if tag.get("translation") and tag["translation"]["en"].isascii():
                 use_origin_tag = False
-            tag_en: str = (
-                tag_raw if use_origin_tag else tag["translation"]["en"]
-            )
+            tag_en: str = tag_raw if use_origin_tag else tag["translation"]["en"]
             tag_en = tag_en.replace(" ", "_").replace("-", "_")
             tag_en = re.sub(PUNCTUATION_PATTERN, "", tag_en)
             tags_en.append("#" + html_esc(tag_en))

@@ -1,9 +1,10 @@
 import asyncio
+from datetime import datetime
 import json
 import os
 import logging
 import subprocess
-from typing import Any
+from typing import Any, Optional
 
 import httpx
 from telegram import User
@@ -11,7 +12,7 @@ from telegram import User
 from config import config
 from entities import Image, ImageTag, ArtworkResult
 from utils.escaper import html_esc
-from utils import check_duplication_via_url
+from utils import check_duplication_via_url, check_cache
 from db import session
 
 logger = logging.getLogger(__name__)
@@ -63,6 +64,20 @@ class DefaultPlatform:
         return ArtworkResult(True)
     
     @classmethod
+    def check_cache(cls, pid: str, post_mode: bool, user: User) -> Optional[list[Image]]:
+        existing_images =  check_cache(pid, cls.platform)
+        if existing_images:
+            for image in existing_images:
+                image.create_time = datetime.now()
+                image.post_count += 1
+                if image.post_by_guest or post_mode:
+                    if post_mode:
+                        image.post_by_guest = False
+                    image.username = user.username
+                    image.userid = user.id
+            return existing_images
+    
+    @classmethod
     async def get_images(
         cls, 
         user: User, 
@@ -72,6 +87,10 @@ class DefaultPlatform:
         artwork_meta: dict[str, Any], 
         artwork_result: ArtworkResult
     ) -> list[Image]:
+        pid: str = artwork_meta["id"]
+        if existing_images := cls.check_cache(pid, post_mode, user):
+            artwork_result.cached = True
+            return existing_images
         images: list[Image] = []
         for i in range(page_count):
             image = artwork_info[i+1]
@@ -82,7 +101,7 @@ class DefaultPlatform:
                     userid=user.id,
                     username=user.name,
                     platform=cls.platform,
-                    pid=artwork_meta.get("id") or artwork_meta.get("media_id"),
+                    pid=pid,
                     title=artwork_meta.get("title") or artwork_meta.get("tweet_content") or artwork_meta.get("id"),
                     page=(i+1),
                     author=artwork_meta.get("author"),
@@ -145,11 +164,13 @@ class DefaultPlatform:
             artwork_result.feedback = f"""获取成功！\n共有{page_count}张图片\n"""
 
             artwork_meta: dict[str, Any] = artwork_info[0][-1]
+
             artwork_result.images = await cls.get_images(user, post_mode, page_count, artwork_info, artwork_meta, artwork_result)
             artwork_result = await cls.get_tags(input_tags, artwork_meta, artwork_result)
 
-            tasks = [asyncio.create_task(cls.download_image(image)) for image in artwork_result.images]
-            await asyncio.wait(tasks)
+            if not artwork_result.cached:
+                tasks = [asyncio.create_task(cls.download_image(image)) for image in artwork_result.images]
+                await asyncio.wait(tasks)
             
             # session.commit() # 移至 command handler 发出 Image Group 之后
             artwork_result = cls.get_caption(artwork_result, artwork_meta)
@@ -186,11 +207,13 @@ class DefaultPlatform:
                 tag = tag.upper()
             tag = "#" + html_esc(tag.lstrip("#"))
             input_set.add(tag)
-            session.add(
-                ImageTag(
-                    pid=artwork_meta.get("id") or artwork_meta.get("media_id"), 
-                    tag=tag
-            ))
+
+            if not artwork_result.cached:
+                session.add(
+                    ImageTag(
+                        pid=artwork_meta.get("id") or artwork_meta.get("media_id"), 
+                        tag=tag
+                ))
         
         raw_tags_set: set[str] = set()
         for tag in raw_tags:

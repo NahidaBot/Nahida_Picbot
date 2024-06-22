@@ -30,6 +30,10 @@ class Twitter(DefaultPlatform):
         artwork_meta: dict[str, Any], 
         artwork_result: ArtworkResult
     ) -> list[Image]:
+        pid: str = artwork_meta["id"]
+        if existing_images := cls.check_cache(pid, post_mode, user):
+            artwork_result.cached = True
+            return existing_images
         images: list[Image] = []
         for i in range(page_count):
             image = artwork_info[i + 1]
@@ -39,7 +43,7 @@ class Twitter(DefaultPlatform):
                     userid=user.id,
                     username=user.name,
                     platform=cls.platform,
-                    pid=artwork_meta["tweet_id"],
+                    pid=pid,
                     title=artwork_meta["content"],
                     page=(i + 1),
                     author=artwork_meta["user"]["name"],
@@ -97,7 +101,8 @@ class Twitter(DefaultPlatform):
                 tag = tag.upper()
             tag = "#" + html_esc(tag.lstrip("#"))
             input_set.add(tag)
-            session.add(ImageTag(pid=tweet_id, tag=tag))
+            if not artwork_result.cached:
+                session.add(ImageTag(pid=tweet_id, tag=tag))
 
         all_tags = input_set & set(artwork_result.raw_tags)
         artwork_result.is_AIGC = "#AI" in all_tags

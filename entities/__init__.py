@@ -17,7 +17,7 @@ class Image(Base):
     id = Column(Integer, primary_key=True)  # id 一般自增
     userid = Column(Integer)  # telegram user id
     username = Column(String)  # telegram username 对于没有用户名的用户 为全名
-    create_time = Column(DateTime, default=datetime.now)  # 图片发送时间
+    create_time = Column(DateTime, default=datetime.now())  # 图片发送时间
     platform = Column(String)  # 图片所属平台，例如 Pixiv
     title = Column(
         String
@@ -44,6 +44,8 @@ class Image(Base):
     sent_message_link = Column(String)  # telegram file_id 预览图
     file_id_thumb = Column(String)  # telegram file_id 预览图
     file_id_original = Column(String) # telegram file_id 原图
+    update_time = Column(DateTime, default=datetime.now()) # 最后一次发送时间
+    post_count = Column(Integer(), default=1) # 发送次数计数
 
 
 class ImageTag(Base):
@@ -70,6 +72,7 @@ class ArtworkResult:
         raw_tags: list[str] = [],
         sent_channel_msg: Optional[Message] = None,
         is_international: bool = False,
+        cached: bool = False,
     ) -> None:
         """
         用于在调用中传递一些 ~~脏~~ 东西
@@ -95,3 +98,4 @@ class ArtworkResult:
         self.raw_tags = raw_tags
         self.sent_channel_msg = sent_channel_msg
         self.is_international = is_international
+        self.cached = cached

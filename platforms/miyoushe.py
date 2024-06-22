@@ -64,6 +64,10 @@ class MiYouShe(DefaultPlatform):
         artwork_meta: dict[str, Any],
         artwork_result: ArtworkResult,
     ) -> list[Image]:
+        pid: str = artwork_meta["id"]
+        if existing_images := cls.check_cache(pid, post_mode, user):
+            artwork_result.cached = True
+            return existing_images
         images: list[Image] = []
         assert isinstance(artwork_info, list)
         x_oss_process = "?x-oss-process=image//resize,l_2560/quality,q_100/auto-orient,0/interlace,1/format,jpg"
@@ -85,7 +89,7 @@ class MiYouShe(DefaultPlatform):
                 filename=f'{artwork_meta["post"]["post_id"]}_{i+1}.{extension}',
                 author=artwork_meta["user"]["nickname"],
                 authorid=artwork_meta["user"]["uid"],
-                pid=artwork_meta["post"]["post_id"],
+                pid=pid,
                 extension=extension,
                 url_original_pic=image_info["url"],
                 url_thumb_pic=(image_info["url"]+x_oss_process),
@@ -153,11 +157,12 @@ class MiYouShe(DefaultPlatform):
                 input_tags, artwork_meta, artwork_result
             )
 
-            tasks = [
-                asyncio.create_task(cls.download_image(image))
-                for image in artwork_result.images
-            ]
-            await asyncio.wait(tasks)
+            if not artwork_result.cached:
+                tasks = [
+                    asyncio.create_task(cls.download_image(image))
+                    for image in artwork_result.images
+                ]
+                await asyncio.wait(tasks)
 
             # session.commit() # 移至 command handler 发出 Image Group 之后
             artwork_result = cls.get_caption(artwork_result, artwork_meta)
@@ -215,7 +220,8 @@ class MiYouShe(DefaultPlatform):
                 tag = tag.upper()
             tag = "#" + html_esc(tag.lstrip("#"))
             input_set.add(tag)
-            session.add(ImageTag(pid=post_id, tag=tag))
+            if not artwork_result.cached:
+                session.add(ImageTag(pid=post_id, tag=tag))
 
         all_tags = input_set & set(artwork_result.raw_tags)
         artwork_result.is_AIGC = "#AI" in all_tags

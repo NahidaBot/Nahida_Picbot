@@ -1,13 +1,18 @@
 import io
 import logging
+import os
+from typing import Optional
 import PIL.Image
 from db import session
+from sqlalchemy import desc
 from entities import Image
 from telegram import Message
 
 logger = logging.getLogger(__name__)
 
 MAX_SIDE = 2560
+MAX_FILE_SIZE = 10 * 1024 * 1024
+
 
 def compress_image(
     input_path: str, output_path: str, target_size_mb: int = 10, quality=100
@@ -24,7 +29,7 @@ def compress_image(
         width, height = img.size
         if (max_side := max(height, width)) > MAX_SIDE:
             logger.info("meet limits. resized.")
-            scale_factor = 2560 / max_side
+            scale_factor = MAX_SIDE / max_side
             img = img.resize(
                 (int(width * scale_factor), int(height * scale_factor)),
                 PIL.Image.LANCZOS,
@@ -49,9 +54,6 @@ def compress_image(
 
 
 def is_within_size_limit(input_path: str) -> bool:
-    import os
-    MAX_FILE_SIZE = 10 * 1024 * 1024
-
     size = os.path.getsize(input_path)
     if size >= MAX_FILE_SIZE:
         return False
@@ -68,8 +70,21 @@ def check_duplication(pid: int | str) -> Image | None:
     logger.debug(image)
     return image
 
+
 def check_duplication_via_url(url: str) -> Image | None:
     image = session.query(Image).filter_by(url=url, post_by_guest=False).first()
+    logger.debug(image)
+    return image
+
+
+def check_cache(pid: str, platform: str) -> Optional[list[Image]]:
+    image = (
+        session.query(Image)
+        .filter_by(pid=pid, platform=platform)
+        .order_by(Image.page)
+        .group_by(Image.page)
+        .all()
+    )
     logger.debug(image)
     return image
 
@@ -79,7 +94,7 @@ def unmark_deduplication(pid: int | str) -> None:
     反标记
     直接删除匹配 pid 的项 (
     """
-    images_to_delete = session.query(Image).filter(Image.pid == int(pid)).all()
+    images_to_delete = session.query(Image).filter(Image.pid == str(pid)).all()
 
     # 删除查询到的数据
     for image in images_to_delete:

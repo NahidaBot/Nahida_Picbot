@@ -68,6 +68,9 @@ class admin:
         return result
 
 
+async def random(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    pass
+
 async def start(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
     user = update.effective_user
     assert isinstance(user, User)
@@ -193,6 +196,9 @@ async def send_media_group(
     """
     media_group: list[InputMediaPhoto] = []
     for image in artwork_result.images:
+        if image.file_id_thumb:
+            media_group.append(InputMediaPhoto(image.file_id_thumb))
+            continue
         file_path = f"{DOWNLOADS}/{image.platform}/{image.filename}"
         if not is_within_size_limit(file_path):
             # TODO 可能有潜在的bug，在多图达到压缩阈值时，将压缩后的图片写入了同一路径
@@ -288,6 +294,9 @@ async def post_original_pic(
         )
     media_group: list[InputMediaDocument] = []
     for image in images:
+        if image.file_id_original:
+            media_group.append(InputMediaDocument(image.file_id_original))
+            continue
         file_path = f"{DOWNLOADS}/{image.platform}/{image.filename}"
         with open(file_path, "rb") as f:
             media_group.append(telegram.InputMediaDocument(f))
