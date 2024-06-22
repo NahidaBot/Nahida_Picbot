@@ -55,7 +55,7 @@ class Pixiv(DefaultPlatform):
             return j["body"]
 
     @classmethod
-    async def get_multi_page(cls, pid: int | str) -> list[dict[str, Any]]:
+    async def get_multi_page(cls, pid: str) -> list[dict[str, Any]]:
         """
         示例: ./json_examples/pixiv_web_pages.json
         """
@@ -67,7 +67,7 @@ class Pixiv(DefaultPlatform):
             return j["body"]
 
     @classmethod
-    async def check_duplication(cls, pid: int | str, user: User, post_mode: bool) -> ArtworkResult:  # type: ignore
+    async def check_duplication(cls, pid: str, user: User, post_mode: bool) -> ArtworkResult:  # type: ignore
         if post_mode and config.bot_deduplication_mode:
             existing_image = check_duplication(pid)
             if existing_image:
@@ -99,7 +99,7 @@ class Pixiv(DefaultPlatform):
             r"^(?:https?:\/\/)?(?:www\.)?(?:pixiv\.net\/(?:en\/)?(?:(?:i|artworks)\/|member_illust\.php\?(?:mode=[a-z_]*&)?illust_id=))?(\d+)$"
         )
         try:
-            pid: int = int(reg.split(url)[1])
+            pid: str = reg.split(url)[1]
 
             artwork_meta, artwork_meta_en = await asyncio.gather(
                 cls.get_info_from_web_api(pid), cls.get_info_from_web_api(pid, "en")
@@ -255,8 +255,6 @@ class Pixiv(DefaultPlatform):
 
         input_set: set[str] = set()
         for tag in input_tags:
-            if len(tag) <= 4:
-                tag = tag.upper()
             tag = "#" + html_esc(tag.lstrip("#"))
             input_set.add(tag)
             session.add(ImageTag(pid=pid, tag=tag))

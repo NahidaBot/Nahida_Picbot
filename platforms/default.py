@@ -5,6 +5,7 @@ import logging
 import subprocess
 from typing import Any
 
+import httpx
 from telegram import User
 
 from config import config
@@ -22,7 +23,7 @@ class GetArtInfoError(Exception):
 class DefaultPlatform:
 
     platform = "default"
-    base_downlad_path = "./data/downloads"
+    base_downlad_path = f"./data/downloads"
     download_path = f"{base_downlad_path}/{platform}/"
     if not os.path.exists(download_path):
         os.makedirs(download_path)
@@ -111,7 +112,6 @@ class DefaultPlatform:
 
     @classmethod
     async def download_image(cls, image: Image, refer: str = "") -> None:
-        import httpx
         async with httpx.AsyncClient(http2=True) as client:
             headers = {
                 "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",

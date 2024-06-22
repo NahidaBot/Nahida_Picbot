@@ -1,6 +1,6 @@
 from datetime import datetime
 from db import Base, engine
-from telegram import Message, Update
+from telegram import Message
 from sqlalchemy import (
     Column,
     Integer,
@@ -71,11 +71,17 @@ class ArtworkResult:
         sent_channel_msg: Optional[Message] = None,
     ) -> None:
         """
-        success: bool 获取图片是否成功
-        feedback admin chat 中 bot 对命令的反馈
-        caption 图片的描述
-        images: list[Image]
-        hint_msg: Message feedback 对应的消息，用作后续编辑
+        用于在调用中传递一些 ~~脏~~ 东西
+        :param success: bool 获取图片是否成功
+        :param feedback: str admin chat 中 bot 对命令的反馈
+        :param caption str 图片的描述
+        :param images: list[Image] 
+        :param hint_msg: Message feedback 对应的消息，用作后续编辑
+        :param is_NSFW: bool
+        :param is_AIGC: bool
+        :param tags: list[str]
+        :param raw_tags: list[str]
+        :param sent_channel_msg: 频道成功发出消息后, bot api 返回的引用
         """
         self.success = success
         self.feedback = feedback

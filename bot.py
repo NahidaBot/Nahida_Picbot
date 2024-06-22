@@ -12,8 +12,8 @@ from telegram.ext import (
 from config import config
 from commands import *
 
-if not os.path.exists("./data/downloads/"):
-    os.makedirs("./data/downloads/")
+if not os.path.exists(DefaultPlatform.base_downlad_path):
+    os.makedirs(DefaultPlatform.base_downlad_path)
 
 if config.debug:
     logging.basicConfig(
