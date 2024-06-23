@@ -72,18 +72,18 @@ async def random(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     image = get_random_image()
     await context.bot.send_photo(
         update.message.chat_id,
-        InputMediaPhoto('AgACAgUAAx0Cb-wkHgACB5tmdudldZfavgPTIAwjCqadz83TXwACi8IxG8dcuVfipgzHcOC0_gEAAwIAA3kAAzUE', filename='1.jpg'),
+        image.file_id_thumb,
         caption=config.txt_msg_tail,
-        # reply_markup=InlineKeyboardMarkup(
-        #     [
-        #         [
-        #             InlineKeyboardButton("channel", image.sent_message_link),
-        #             InlineKeyboardButton(
-        #                 "original", image.sent_message_link + "?comment=1"
-        #             ),
-        #         ]
-        #     ]
-        # ),
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton("more info", image.sent_message_link),
+                    InlineKeyboardButton(
+                        "original", image.sent_message_link + "?comment=1"
+                    ),
+                ]
+            ]
+        ),
     )
 
 
@@ -242,18 +242,6 @@ async def send_media_group(
     ):
         chat_id = config.bot_enable_ai_redirect_channel
 
-    # reply_msg = await context.bot.send_photo(
-    #     chat_id,
-    #     media_group[0],
-    #     caption=artwork_result.caption,
-    #     parse_mode=ParseMode.HTML,
-    #     disable_notification=disable_notification,
-    # )
-    # img: Image = artwork_result.images[0]
-    # img.sent_message_link = reply_msg.link
-    # img.file_id_thumb = reply_msg.photo[3].file_id
-    # artwork_result.sent_channel_msg = reply_msg
-
     MAX_NUM = 10
     total_page = math.ceil(len(media_group) / MAX_NUM)
     batch_size = math.ceil(len(media_group) / total_page)
@@ -270,7 +258,7 @@ async def send_media_group(
         )
         for j in range(len(reply_msgs)):
             img: Image = artwork_result.images[i * batch_size + j]
-            img.sent_message_link = reply_msgs[j].link
+            img.sent_message_link = reply_msgs[0].link
             img.file_id_thumb = reply_msgs[j].photo[3].file_id
         reply_msg = reply_msgs[0]
         artwork_result.sent_channel_msg = reply_msg
