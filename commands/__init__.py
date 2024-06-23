@@ -30,7 +30,6 @@ from entities import *
 from platforms import *
 from utils import *
 
-MAX_FILE_SIZE = 10 * 1024 * 1024
 DOWNLOADS: str = DefaultPlatform.base_downlad_path
 restart_data = os.path.join(os.getcwd(), "restart.json")
 
@@ -52,7 +51,7 @@ class admin:
     def __init__(self, func: Callable[..., Any]) -> None:
         self.func = func
 
-    async def __call__(self, *args: Any, **kwargs: Any) -> Any:
+    async def __call__(self, *args: tuple[Any, ...], **kwargs: dict[str, Any]) -> Any:
         logger.debug(args)
         logger.debug(kwargs)
         context: ContextTypes.DEFAULT_TYPE = args[1]
@@ -153,7 +152,7 @@ async def get_artworks(
         assert isinstance(message.text, str)
         splited_msg = message.text.split()[1:]
         post_url = splited_msg[0]
-        tags: list[str] = splited_msg[1:]
+        artwork_param = prase_params(splited_msg[1:])
         user = message.from_user
         assert isinstance(user, User)
     except:
@@ -162,12 +161,16 @@ async def get_artworks(
         if ("pixiv" in post_url) or re.match(r"[1-9]\d*", post_url):
             if instant_feedback:
                 hint_msg = await message.reply_text("正在获取 Pixiv 图片喵...")
-            artwork_result = await Pixiv.get_artworks(post_url, tags, user, post_mode)
+            artwork_result = await Pixiv.get_artworks(
+                post_url, artwork_param, user, post_mode
+            )
         elif "twitter" in post_url or "x.com" in post_url:
             if instant_feedback:
                 hint_msg = await message.reply_text("正在获取 twitter 图片喵...")
             post_url = post_url.replace("x.com", "twitter.com")
-            artwork_result = await Twitter.get_artworks(post_url, tags, user, post_mode)
+            artwork_result = await Twitter.get_artworks(
+                post_url, artwork_param, user, post_mode
+            )
         elif (
             "miyoushe.com" in post_url
             or "bbs.mihoyo" in post_url
@@ -176,13 +179,13 @@ async def get_artworks(
             if instant_feedback:
                 hint_msg = await message.reply_text("正在获取米游社图片喵...")
             artwork_result = await MiYouShe.get_artworks(
-                post_url, tags, user, post_mode
+                post_url, artwork_param, user, post_mode
             )
         elif "bilibili.com" in post_url:
             if instant_feedback:
                 hint_msg = await message.reply_text("正在获取 bilibili 图片喵...")
             artwork_result = await bilibili.get_artworks(
-                post_url, tags, user, post_mode
+                post_url, artwork_param, user, post_mode
             )
         else:
             if instant_feedback:
@@ -190,7 +193,7 @@ async def get_artworks(
                     "检测到神秘的平台喵……\n咱正在试试能不能帮主人获取到，主人不要抱太大期望哦…"
                 )
             artwork_result = await DefaultPlatform.get_artworks(
-                post_url, tags, user, post_mode
+                post_url, artwork_param, user, post_mode
             )
             # artwork_result.feedback = "没有检测到支持的 URL 喵！主人是不是打错了喵！"
         if hint_msg:
@@ -212,6 +215,7 @@ async def send_media_group(
     context: bot 上下文
     """
     media_group: list[InputMediaPhoto] = []
+    has_spoiler: Optional[bool] = artwork_result.artwork_param.spoiler
     for image in artwork_result.images:
         if image.file_id_thumb:
             media_group.append(InputMediaPhoto(image.file_id_thumb))
@@ -222,7 +226,11 @@ async def send_media_group(
             compress_image(file_path, img_compressed)
             file_path = img_compressed
         with open(file_path, "rb") as f:
-            media_group.append(InputMediaPhoto(f, has_spoiler=image.r18))
+            media_group.append(
+                InputMediaPhoto(
+                    f, has_spoiler=has_spoiler if has_spoiler is not None else image.r18
+                )
+            )
     logger.debug(media_group)
 
     # 防打扰, 若干秒内不开启通知音
@@ -233,6 +241,8 @@ async def send_media_group(
         interval = now - context.bot_data["last_msg"]
         if interval.total_seconds() < config.bot_disable_notification_interval:
             disable_notification = True
+        if artwork_result.artwork_param.silent is not None:
+            disable_notification = artwork_result.artwork_param.silent
 
     # 发图流程 检测到AI图则分流
     if (

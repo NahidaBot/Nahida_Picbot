@@ -10,7 +10,7 @@ from telegram import User
 import httpx
 
 from config import config
-from entities import Image, ImageTag, ArtworkResult
+from entities import ArtworkParam, Image, ImageTag, ArtworkResult
 from utils import check_duplication, html_esc
 from db import session
 from .default import DefaultPlatform
@@ -26,8 +26,8 @@ class Pixiv(DefaultPlatform):
         os.mkdir(download_path)
 
     cookies = {
-        'PHPSESSID': config.pixiv_phpsessid,
-        'device_token': config.pixiv_device_token,
+        "PHPSESSID": config.pixiv_phpsessid,
+        "device_token": config.pixiv_device_token,
     }
 
     @classmethod
@@ -65,20 +65,20 @@ class Pixiv(DefaultPlatform):
         """
         url = f"https://www.pixiv.net/ajax/illust/{pid}/pages"
         headers = {
-            'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-            'accept-language': 'zh-CN,zh;q=0.9,en;q=0.8',
-            'cache-control': 'max-age=0',
-            'dnt': '1',
-            'priority': 'u=0, i',
-            'sec-ch-ua': '"Not/A)Brand";v="8", "Chromium";v="126", "Google Chrome";v="126"',
-            'sec-ch-ua-mobile': '?0',
-            'sec-ch-ua-platform': '"macOS"',
-            'sec-fetch-dest': 'document',
-            'sec-fetch-mode': 'navigate',
-            'sec-fetch-site': 'cross-site',
-            'sec-fetch-user': '?1',
-            'upgrade-insecure-requests': '1',
-            'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "accept-language": "zh-CN,zh;q=0.9,en;q=0.8",
+            "cache-control": "max-age=0",
+            "dnt": "1",
+            "priority": "u=0, i",
+            "sec-ch-ua": '"Not/A)Brand";v="8", "Chromium";v="126", "Google Chrome";v="126"',
+            "sec-ch-ua-mobile": "?0",
+            "sec-ch-ua-platform": '"macOS"',
+            "sec-fetch-dest": "document",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-site": "cross-site",
+            "sec-fetch-user": "?1",
+            "upgrade-insecure-requests": "1",
+            "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
         }
         async with httpx.AsyncClient(http2=True) as client:
             # await asyncio.sleep(0.5)
@@ -104,7 +104,7 @@ class Pixiv(DefaultPlatform):
 
     @classmethod
     async def get_artworks(
-        cls, url: str, input_tags: list[str], user: User, post_mode: bool = True
+        cls, url: str, artwork_param: ArtworkParam, user: User, post_mode: bool = True
     ) -> ArtworkResult:
         """
         :param url 匹配下列任意一种
@@ -129,6 +129,7 @@ class Pixiv(DefaultPlatform):
             artwork_result = await cls.check_duplication(pid, user, post_mode)
             if not artwork_result.success:
                 return artwork_result
+            artwork_result.artwork_param = artwork_param
 
             page_count: int = artwork_meta["pageCount"]
             artwork_result.feedback = f"""获取成功！\n共有{page_count}张图片\n"""
@@ -141,10 +142,10 @@ class Pixiv(DefaultPlatform):
                 user, post_mode, page_count, artwork_info, artwork_meta, artwork_result
             )
             artwork_result: ArtworkResult = await cls.get_tags(
-                input_tags, artwork_meta, artwork_result
+                artwork_param.input_tags, artwork_meta, artwork_result
             )
             artwork_result = await cls.get_en_tags(
-                input_tags, artwork_meta_en, artwork_result
+                artwork_param.input_tags, artwork_meta_en, artwork_result
             )
 
             if not artwork_result.cached:
@@ -183,8 +184,14 @@ class Pixiv(DefaultPlatform):
             return existing_images
         images: list[Image] = []
         assert isinstance(artwork_info, list)
-        for i in range(page_count):
-            image_info: dict[str, Union[dict[str, str], str]] = artwork_info[i]
+        pages = list(range(1, page_count + 1))
+        if artwork_result.artwork_param.pages is not None:
+            pages = artwork_result.artwork_param.pages
+        is_nsfw: bool = artwork_result.is_NSFW or artwork_meta["xRestrict"]
+        if artwork_result.artwork_param.is_NSFW is not None:
+            is_nsfw = artwork_result.artwork_param.is_NSFW
+        for i in pages:
+            image_info: dict[str, Union[dict[str, str], str]] = artwork_info[i - 1]
             assert isinstance(image_info["urls"], dict)
             urls: dict[str, str] = image_info["urls"]
             img = Image(
@@ -192,7 +199,7 @@ class Pixiv(DefaultPlatform):
                 username=user.name,
                 platform=cls.platform,
                 title=artwork_meta["title"],
-                page=(i + 1),
+                page=i,
                 size=None,
                 filename=urls["original"].split("/")[-1],
                 author=artwork_meta["userName"],
@@ -201,17 +208,17 @@ class Pixiv(DefaultPlatform):
                 extension=urls["original"].split(".")[-1],
                 url_original_pic=urls["original"],
                 url_thumb_pic=urls["regular"],
-                r18=bool(artwork_result.is_NSFW or artwork_meta["restrict"]),
+                r18=is_nsfw,
                 width=image_info["width"],
                 height=image_info["height"],
                 post_by_guest=(not post_mode),
                 ai=artwork_result.is_AIGC or artwork_meta["aiType"] == 2,
-                full_info=json.dumps(image_info if i else artwork_meta),
+                full_info=json.dumps(image_info if i!=1 else artwork_meta),
             )
             images.append(img)
             session.add(img)
             assert isinstance(artwork_result.feedback, str)
-            artwork_result.feedback += f"第{i+1}张图片：{img.width}x{img.height}\n"
+            artwork_result.feedback += f"第{i}张图片：{img.width}x{img.height}\n"
         logger.debug(images)
         return images
 

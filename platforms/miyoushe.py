@@ -9,7 +9,7 @@ from typing import Any, Optional
 from telegram import User
 import requests
 
-from entities import Image, ImageTag, ArtworkResult
+from entities import ArtworkParam, Image, ImageTag, ArtworkResult
 from platforms.default import DefaultPlatform
 from platforms.pixiv import Pixiv
 from utils import html_esc
@@ -71,8 +71,11 @@ class MiYouShe(DefaultPlatform):
         images: list[Image] = []
         assert isinstance(artwork_info, list)
         x_oss_process = "?x-oss-process=image//resize,l_2560/quality,q_100/auto-orient,0/interlace,1/format,jpg"
-        for i in range(page_count):
-            image_info: dict[str, Any] = artwork_info[i]
+        pages = list(range(1, page_count + 1))
+        if artwork_result.artwork_param.pages is not None:
+            pages = artwork_result.artwork_param.pages
+        for i in pages:
+            image_info: dict[str, Any] = artwork_info[i-1]
             extension = image_info["format"]
             if artwork_result.is_international:
                 if extension == "JPEG":
@@ -84,9 +87,9 @@ class MiYouShe(DefaultPlatform):
                 username=user.name,
                 platform=cls.platform,
                 title=artwork_meta["post"]["subject"],
-                page=(i + 1),
+                page=i,
                 size=int(image_info["size"]),
-                filename=f'{artwork_meta["post"]["post_id"]}_{i+1}.{extension}',
+                filename=f'{artwork_meta["post"]["post_id"]}_{i}.{extension}',
                 author=artwork_meta["user"]["nickname"],
                 authorid=artwork_meta["user"]["uid"],
                 pid=pid,
@@ -98,12 +101,12 @@ class MiYouShe(DefaultPlatform):
                 height=image_info["height"],
                 post_by_guest=(not post_mode),
                 ai=artwork_result.is_AIGC,
-                full_info=json.dumps(image_info if i else artwork_meta),
+                full_info=json.dumps(image_info if i!=1 else artwork_meta),
             )
             images.append(img)
             session.add(img)
             assert isinstance(artwork_result.feedback, str)
-            artwork_result.feedback += f"第{i+1}张图片：{img.width}x{img.height}\n"
+            artwork_result.feedback += f"第{i}张图片：{img.width}x{img.height}\n"
         logger.debug(images)
         return images
 
@@ -113,7 +116,7 @@ class MiYouShe(DefaultPlatform):
 
     @classmethod
     async def get_artworks(
-        cls, url: str, input_tags: list[str], user: User, post_mode: bool = True
+        cls, url: str, artwork_param: ArtworkParam, user: User, post_mode: bool = True
     ) -> ArtworkResult:
         '''
         :param url 支持如下形式的：
@@ -139,7 +142,8 @@ class MiYouShe(DefaultPlatform):
             artwork_result = await cls.check_duplication(post_id, user, post_mode)
             if not artwork_result.success:
                 return artwork_result
-            elif is_global:
+            artwork_result.artwork_param = artwork_param
+            if is_global:
                 artwork_result.is_international = True
 
             page_count = len(image_list)
@@ -154,7 +158,7 @@ class MiYouShe(DefaultPlatform):
                 user, post_mode, page_count, image_list, artwork_meta, artwork_result
             )
             artwork_result = await cls.get_tags(
-                input_tags, artwork_meta, artwork_result
+                artwork_param.input_tags, artwork_meta, artwork_result
             )
 
             if not artwork_result.cached:

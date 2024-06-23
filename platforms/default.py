@@ -10,7 +10,7 @@ import httpx
 from telegram import User
 
 from config import config
-from entities import Image, ImageTag, ArtworkResult
+from entities import ArtworkParam, Image, ImageTag, ArtworkResult
 from utils import check_duplication_via_url, check_cache, html_esc
 from db import session
 
@@ -91,8 +91,14 @@ class DefaultPlatform:
             artwork_result.cached = True
             return existing_images
         images: list[Image] = []
-        for i in range(page_count):
-            image = artwork_info[i+1]
+        pages = list(range(1,page_count+1))
+        if artwork_result.artwork_param.pages is not None:
+            pages = artwork_result.artwork_param.pages
+        is_nsfw: bool = artwork_result.is_NSFW
+        if artwork_result.artwork_param.is_NSFW is not None:
+            is_nsfw = artwork_result.artwork_param.is_NSFW
+        for i in pages:
+            image = artwork_info[i]
             if image[0] == 3:
                 image_info: dict[str,Any] = image[2]
                 extension = artwork_meta.get("extension") or artwork_meta.get("file_ext")
@@ -102,7 +108,7 @@ class DefaultPlatform:
                     platform=cls.platform,
                     pid=pid,
                     title=artwork_meta.get("title") or artwork_meta.get("tweet_content") or artwork_meta.get("id"),
-                    page=(i+1),
+                    page=i,
                     author=artwork_meta.get("author"),
                     authorid=(
                         artwork_meta.get("pixiv_id")
@@ -111,7 +117,7 @@ class DefaultPlatform:
                         or artwork_meta.get("creator_id") 
                         or (artwork_meta.get("user") and artwork_meta.get("user").get("id")) # type: ignore
                     ),
-                    r18=artwork_result.is_NSFW,
+                    r18=is_nsfw,
                     extension=extension or image_info.get("extension") or image_info.get("file_ext"),
                     size=image_info.get("file_size"),
                     url_original_pic=image[1],
@@ -125,7 +131,7 @@ class DefaultPlatform:
                 img.filename = f"{img.pid}_{img.page}.{img.extension}"
                 images.append(img)
                 session.add(img)
-                artwork_result.feedback += f'第{i+1}张图片：{img.width}x{img.height}\n'
+                artwork_result.feedback += f'第{i}张图片：{img.width}x{img.height}\n'
         return images
 
     @classmethod
@@ -150,7 +156,7 @@ class DefaultPlatform:
 
     @classmethod
     async def get_artworks(
-        cls, url: str, input_tags: list[str], user: User, post_mode: bool = True
+        cls, url: str, artwork_param: ArtworkParam, user: User, post_mode: bool = True
     ) -> ArtworkResult:
         try:
             artwork_info = await cls.get_info_from_gallery_dl(url)
@@ -158,6 +164,7 @@ class DefaultPlatform:
             artwork_result = await cls.check_duplication(artwork_info, user, post_mode)
             if not artwork_result.success:
                 return artwork_result
+            artwork_result.artwork_param = artwork_param
 
             page_count = len(artwork_info) - 1
             artwork_result.feedback = f"""获取成功！\n共有{page_count}张图片\n"""
@@ -165,7 +172,7 @@ class DefaultPlatform:
             artwork_meta: dict[str, Any] = artwork_info[0][-1]
 
             artwork_result.images = await cls.get_images(user, post_mode, page_count, artwork_info, artwork_meta, artwork_result)
-            artwork_result = await cls.get_tags(input_tags, artwork_meta, artwork_result)
+            artwork_result = await cls.get_tags(artwork_param.input_tags, artwork_meta, artwork_result)
 
             if not artwork_result.cached:
                 tasks = [asyncio.create_task(cls.download_image(image)) for image in artwork_result.images]

@@ -35,8 +35,14 @@ class Twitter(DefaultPlatform):
             artwork_result.cached = True
             return existing_images
         images: list[Image] = []
-        for i in range(page_count):
-            image = artwork_info[i + 1]
+        pages = list(range(1, page_count + 1))
+        if artwork_result.artwork_param.pages is not None:
+            pages = artwork_result.artwork_param.pages
+        is_nsfw: bool = artwork_result.is_NSFW or artwork_meta["sensitive"]
+        if artwork_result.artwork_param.is_NSFW is not None:
+            is_nsfw = artwork_result.artwork_param.is_NSFW
+        for i in pages:
+            image = artwork_info[i]
             if image[0] == 3:
                 image_info: dict[str,Any] = image[2]
                 img = Image(
@@ -45,10 +51,10 @@ class Twitter(DefaultPlatform):
                     platform=cls.platform,
                     pid=pid,
                     title=artwork_meta["content"],
-                    page=(i + 1),
+                    page=i,
                     author=artwork_meta["user"]["name"],
                     authorid=artwork_meta["user"]["id"],
-                    r18=artwork_result.is_NSFW or artwork_meta["sensitive"],
+                    r18=is_nsfw,
                     extension=image_info["extension"],
                     size=None,
                     url_original_pic=image[1],
@@ -64,7 +70,7 @@ class Twitter(DefaultPlatform):
                 img.filename = f"{img.pid}_{img.page}.{img.extension}"
                 images.append(img)
                 session.add(img)
-                artwork_result.feedback += f"第{i+1}张图片：{img.width}x{img.height}\n"
+                artwork_result.feedback += f"第{i}张图片：{img.width}x{img.height}\n"
         logger.debug(images)
         return images
 

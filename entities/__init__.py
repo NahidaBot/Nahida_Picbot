@@ -1,3 +1,4 @@
+from dataclasses import dataclass, field
 import os
 from datetime import datetime
 from db import Base, engine
@@ -21,11 +22,11 @@ class Image(Base):
     userid = Column(Integer)  # telegram user id
     username = Column(String)  # telegram username 对于没有用户名的用户 为全名
     create_time = Column(DateTime, default=datetime.now())  # 图片发送时间
-    platform = Column(String)  # 图片所属平台，例如 Pixiv
+    platform = Column(String)  # 图片所属平台, 例如 Pixiv
     title = Column(
         String
-    )  # 图片标题 对于没有标题的平台，例如 twitter，是 tweet 原文
-    page = Column(Integer)  # 图片页数 大部分平台可以有多页，此为当前页。
+    )  # 图片标题 对于没有标题的平台, 例如 twitter, 是 tweet 原文
+    page = Column(Integer)  # 图片页数 大部分平台可以有多页, 此为当前页。
     size = Column(Integer)  # 图片大小 操作系统读取出来的大小。
     filename = Column(String)  # 文件名 包含扩展名
     author = Column(String)  # 作者名 是 username 而不是显示名称
@@ -61,44 +62,58 @@ class ImageTag(Base):
 Base.metadata.create_all(engine)
 
 
+@dataclass
+class ArtworkParam:
+    '''
+    传递 /post 和 /echo 中的可选参数
+    :param input_tags: 给出的作品 tag
+    :param pages: 发图的页码范围。如果为空, 默认全部发送。
+    :param source_from_channel: 来源的频道 (直接从别的频道薅.jpg) 
+    :param source_from_username: 来源的用户 (常见于投稿, 或者看到人形bot发图) 
+    :param source_from_userid: 来源的用户id
+    :param upscale: 上采样倍数 (需要waifu2x) 
+    :param silent: 是否静默发图 (覆盖默认行为) 
+    :param spoiler: 是否打上spoiler, 覆盖默认的行为 (给NSFW图片自动加上) 
+    '''
+    input_tags: list[str] = field(default_factory=list)
+    pages: Optional[list[int]] = None
+    source_from_channel: Optional[str] = None
+    source_from_username: Optional[str] = None
+    # source_from_userid: Optional[int|str] = None
+    upscale: Optional[int] = None
+    silent: Optional[bool] = None
+    spoiler: Optional[bool] = None
+    is_NSFW: Optional[bool] = None
+
+
+@dataclass
 class ArtworkResult:
-    def __init__(
-        self,
-        success: bool = False,
-        feedback: Optional[str] = None,
-        caption: Optional[str] = None,
-        images: list[Image] = [],
-        hint_msg: Optional[Message] = None,
-        is_NSFW: bool = False,
-        is_AIGC: bool = False,
-        tags: list[str] = [],
-        raw_tags: list[str] = [],
-        sent_channel_msg: Optional[Message] = None,
-        is_international: bool = False,
-        cached: bool = False,
-    ) -> None:
-        """
-        用于在调用中传递一些 ~~脏~~ 东西
-        :param success: bool 获取图片是否成功
-        :param feedback: str admin chat 中 bot 对命令的反馈
-        :param caption str 图片的描述
-        :param images: list[Image] 
-        :param hint_msg: Message feedback 对应的消息，用作后续编辑
-        :param is_NSFW: bool
-        :param is_AIGC: bool
-        :param tags: list[str]
-        :param raw_tags: list[str]
-        :param sent_channel_msg: 频道成功发出消息后, bot api 返回的引用
-        """
-        self.success = success
-        self.feedback = feedback
-        self.caption = caption
-        self.images = images
-        self.hint_msg = hint_msg
-        self.is_NSFW = is_NSFW
-        self.is_AIGC = is_AIGC
-        self.tags = tags
-        self.raw_tags = raw_tags
-        self.sent_channel_msg = sent_channel_msg
-        self.is_international = is_international
-        self.cached = cached
+    '''
+    用于在调用中传递一些 ~~脏~~ 东西
+    :param success: bool 获取图片是否成功
+    :param feedback: str admin chat 中 bot 对命令的反馈
+    :param caption str 图片的描述
+    :param images: list[Image] 
+    :param hint_msg: Message feedback 对应的消息, 用作后续编辑
+    :param is_NSFW: bool
+    :param is_AIGC: bool
+    :param tags: list[str]
+    :param raw_tags: list[str]
+    :param sent_channel_msg: 频道成功发出消息后, bot api 返回的引用
+    :param is_international: 仅对米游社生效, 用于标记是否来源为 hoyolab
+    :param cached: 数据库中是否找到了有效的缓存
+    :param artwork_param: 传入的参数
+    '''
+    success: bool = False
+    feedback: Optional[str] = None
+    caption: Optional[str] = None
+    images: list[Image] = field(default_factory=list)
+    hint_msg: Optional[Message] = None
+    is_NSFW: bool = False
+    is_AIGC: bool = False
+    tags: list[str] = field(default_factory=list)
+    raw_tags: list[str] = field(default_factory=list)
+    sent_channel_msg: Optional[Message] = None
+    is_international: bool = False
+    cached: bool = False
+    artwork_param: ArtworkParam = field(default_factory=ArtworkParam)
