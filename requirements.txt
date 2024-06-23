@@ -5,3 +5,4 @@ sqlalchemy
 gallery-dl
 retry
 pillow
+httpx[http2]
