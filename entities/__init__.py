@@ -1,3 +1,4 @@
+import os
 from datetime import datetime
 from db import Base, engine
 from telegram import Message
@@ -11,6 +12,8 @@ from sqlalchemy import (
 from datetime import datetime
 from typing import Optional
 
+if not os.path.exists("./data"):
+    os.makedirs("./data")
 
 class Image(Base):
     __tablename__ = "images"
