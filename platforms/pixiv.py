@@ -11,7 +11,7 @@ import httpx
 
 from config import config
 from entities import ArtworkParam, Image, ImageTag, ArtworkResult
-from utils import check_duplication, html_esc
+from utils import check_duplication, get_source_str, html_esc
 from db import session
 from .default import DefaultPlatform
 
@@ -238,11 +238,16 @@ class Pixiv(DefaultPlatform):
             title_sharp in artwork_result.tags
         )
         title = f"<b>{html_esc((title))}</b>\n" if not is_title_included else ""
+        tags = " ".join(artwork_result.tags)
+        source_str = ''
+        if s := get_source_str(artwork_result.artwork_param):
+            source_str += s + '\n'
         artwork_result.caption = (
             f"{title}"
             f'<a href="https://pixiv.net/artworks/{pid}">Source</a>'
             f' by <a href="https://pixiv.net/users/{artwork_meta["userId"]}">Pixiv {artwork_meta["userName"]}</a>\n'
-            f'{" ".join(artwork_result.tags)+"\n" if artwork_result.tags else ""}'
+            f'{source_str}'
+            f'{tags+'\n' if tags else ''}'
             f"<blockquote expandable>{description+'\n' if description else ''}"
             f"Raw Tags: {' '.join(artwork_result.raw_tags)}\n{uploadDate.strftime('%Y-%m-%d %H:%M:%S')}</blockquote>\n"
         )

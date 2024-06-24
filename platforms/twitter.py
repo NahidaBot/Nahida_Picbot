@@ -6,7 +6,7 @@ from typing import Any
 from telegram import User
 
 from entities import Image, ImageTag, ArtworkResult
-from utils import html_esc
+from utils import get_source_str, html_esc
 from db import session
 from .default import DefaultPlatform
 
@@ -80,10 +80,15 @@ class Twitter(DefaultPlatform):
         tweet_author = artwork_result.images[0].author
         tweet_author_url = f"https://twitter.com/{tweet_author}"
         tweet_url = f"{tweet_author_url}/status/{tweet_id}"
+        tags = f'{" ".join(artwork_result.tags)}'
+        source_str = ''
+        if s := get_source_str(artwork_result.artwork_param):
+            source_str += s + '\n'
         artwork_result.caption = (
             f'<a href="{tweet_url}">Source</a>'
             f' by <a href="{tweet_author_url}">twitter @{tweet_author}</a>\n'
-            f'{" ".join(artwork_result.tags)}\n'
+            f'{source_str}'
+            f'{tags+'\n' if tags else ''}'
             f"<blockquote expandable>{html_esc(artwork_result.images[0].title)}</blockquote>\n"
         )
         logger.debug(artwork_result)
@@ -97,7 +102,7 @@ class Twitter(DefaultPlatform):
         artwork_result: ArtworkResult,
     ) -> ArtworkResult:
         # twitter tag 一般情况下完全符合 telegram hashtag 规则
-        artwork_result.raw_tags = artwork_meta["hashtags"]
+        artwork_result.raw_tags = artwork_meta.get("hashtags") or list()
 
         tweet_id = artwork_result.images[0].pid
 

@@ -73,13 +73,14 @@ def main() -> None:
     application.add_handler(CommandHandler("restart", restart))
     application.add_handler(
         MessageHandler(
-            filters.TEXT
-            # & filters.ChatType.PRIVATE
-            & (filters.Entity("url") | filters.Entity("text_link")),
+            # filters.TEXT &
+            filters.ChatType.PRIVATE
+            & (filters.Entity("url") | filters.Entity("text_link") | filters.CaptionEntity("url") | filters.CaptionEntity("text_link")),
             callback=handle_private_share,
             block=False,
         )
     )
+    application.add_handler(InlineQueryHandler(handle_inline_cmd, r'\/(post|echo).+',block=False))
     application.add_handler(InlineQueryHandler(handle_inline_query,block=False))
 
     # Run the bot until the user presses Ctrl-C

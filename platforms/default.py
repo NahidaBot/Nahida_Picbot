@@ -11,7 +11,7 @@ from telegram import User
 
 from config import config
 from entities import ArtworkParam, Image, ImageTag, ArtworkResult
-from utils import check_duplication_via_url, check_cache, html_esc
+from utils import check_duplication_via_url, check_cache, get_source_str, html_esc
 from db import session
 
 logger = logging.getLogger(__name__)
@@ -191,6 +191,8 @@ class DefaultPlatform:
         caption = ''
         if artwork_meta.get("title"):
             caption += f"<blockquote>{html_esc(artwork_meta.get("title"))}</blockquote>\n" # type: ignore
+        if s:=get_source_str(artwork_result.artwork_param):
+            caption += s + '\n'
         if artwork_result.tags:
             caption += f'Tags: {" ".join(artwork_result.tags)}\n'
         if artwork_result.raw_tags:

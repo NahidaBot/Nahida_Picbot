@@ -138,6 +138,7 @@ def find_url(message: Message) -> list[str]:
     logger.debug(message.entities)
     entities = message.entities if message.entities else message.caption_entities
     urls: list[str] = []
+    text = message.text if message.text else message.caption
     for entity in entities:
         if entity.type == "text_link":
             logger.debug("\n-----\nfound text_link\n-----\n")
@@ -146,7 +147,7 @@ def find_url(message: Message) -> list[str]:
         if entity.type == "url":
             logger.debug("\n-----\nfound url\n-----\n")
             logger.debug(msg=entity)
-            urls.append(message.text[entity.offset : entity.offset + entity.length])
+            urls.append(text[entity.offset : entity.offset + entity.length])
     return urls
 
 
@@ -208,14 +209,14 @@ def prase_params(words: list[str]) -> ArtworkParam:
     return params
 
 
-def get_source_str(artwork_param: ArtworkParam) -> Optional[str]:
+def get_source_str(artwork_param: ArtworkParam) -> str:
     s = ""
     if artwork_param.source_from_channel:
         reg = re.compile(
             r"^(?:https?:\/\/)?(?:www\.)?t.me\/([A-Za-z0-9_]+)\/?(?:\d+)?\/?$"
         )
         try:
-            channel_name: str = reg.split(url)[1]
+            channel_name: str = reg.split(artwork_param.source_from_channel)[1]
         except Exception as e:
             logger.error("在正则匹配时发生了一个错误")
             return s

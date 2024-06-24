@@ -12,7 +12,7 @@ import requests
 from entities import ArtworkParam, Image, ImageTag, ArtworkResult
 from platforms.default import DefaultPlatform
 from platforms.pixiv import Pixiv
-from utils import html_esc
+from utils import get_source_str, html_esc
 from db import session
 
 logger = logging.getLogger(__name__)
@@ -193,10 +193,14 @@ class MiYouShe(DefaultPlatform):
             author_url = f"https://www.miyoushe.com/{url_path}/accountCenter/postList?id={artwork_result.images[0].authorid}"
             article_context: str = artwork_meta["post"]["content"]
         created_at = datetime.fromtimestamp(artwork_meta["post"]["created_at"])
+        source_str = ''
+        if s := get_source_str(artwork_result.artwork_param):
+            source_str += s + '\n'
         artwork_result.caption = (
             f"<b>{html_esc(artwork_meta["post"]["subject"])}</b>\n"
             f'<a href="{article_url}">Source</a>'
             f' by <a href="{author_url}">{"HoYoLab" if artwork_result.is_international else "米游社"} @{author}</a>\n'
+            f'{source_str}'
             f"<blockquote expandable>{article_context+'\n' if article_context else ''}"
             f"Topics: {' '.join(artwork_result.raw_tags)}\n{created_at.strftime('%Y-%m-%d %H:%M:%S')}</blockquote>\n"
         )

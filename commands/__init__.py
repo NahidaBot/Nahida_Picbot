@@ -14,6 +14,7 @@ from telegram import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     InlineQueryResultArticle,
+    InlineQueryResultCachedPhoto,
     InputTextMessageContent,
     Update,
     BotCommand,
@@ -103,6 +104,7 @@ async def start(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
 async def help_command(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
     assert isinstance(update.message, Message)
     await update.message.reply_text(config.txt_help, parse_mode=ParseMode.HTML)
+
 
 @admin
 async def post(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -544,31 +546,90 @@ async def update(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await restart(update, context, "更新成功了喵！")
 
 
-async def handle_private_share(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def handle_private_share(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
     assert update.message
-    assert update.message.from_user
-    if not is_admin(update.message.from_user, context):
+    message = update.message
+    assert message.from_user
+    if not is_admin(message.from_user, context):
         return
-    urls = find_url(update.message)
+    urls = find_url(message)
     if not urls:
         return
-    await update.message.reply_text("检测到url: ", reply_markup=InlineKeyboardMarkup(
-        [
+    urls = json.dumps(urls).replace(" ", "")
+    logger.debug(urls)
+    from_link = ""
+    if (
+        (origin := message.forward_origin)
+        and isinstance(origin, telegram.MessageOriginChannel)
+        and (chat := origin.chat)
+        and chat.link
+    ):
+        from_link = f"from={chat.link}/{origin.message_id} "
+    await message.reply_text(
+        "检测到了链接喵~ 主人要发嘛？",
+        reply_markup=InlineKeyboardMarkup(
             [
-                InlineKeyboardButton("发到频道", switch_inline_query_current_chat=f'/post {urls[0]} tag='),
-                InlineKeyboardButton("返回预览图", switch_inline_query_current_chat=f'/echo {urls[0]}'),
-                InlineKeyboardButton("debug", switch_inline_query_current_chat=f'{urls}'),
+                [
+                    InlineKeyboardButton(
+                        "发到频道",
+                        switch_inline_query_current_chat=f"/post {urls} {from_link}tag=",
+                    ),
+                    InlineKeyboardButton(
+                        "返回预览图",
+                        switch_inline_query_current_chat=f"/echo {urls} {from_link}",
+                    ),
+                    # InlineKeyboardButton(
+                    #     "debug", switch_inline_query_current_chat=f"{urls}"
+                    # ),
+                ]
             ]
-        ]
-    ))
+        ),
+    )
+
+
+async def handle_inline_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    assert update.inline_query
+    query = update.inline_query
+    text = query.query
+    if "/post" in text or "/echo" in text:
+        words = text.split()
+        urls = json.loads(words[1])
+        results: list[InlineQueryResultArticle] = []
+        for i in range(len(urls)):
+            results.append(
+                InlineQueryResultArticle(
+                    str(uuid4()),
+                    f"{words[0]} url[{i}]",
+                    InputTextMessageContent(
+                        f"{words[0]} {urls[i]} {" ".join(words[2:])}"
+                    ),
+                    description=urls[i],
+                )
+            )
+        await query.answer(results, cache_time=1)
+
 
 async def handle_inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     assert update.inline_query
     query = update.inline_query
-    text = query.query
-    if '/post' in text:
-        await query.answer([InlineQueryResultArticle(str(uuid4()), "Post in channel", InputTextMessageContent(query.query))])
-    if '/echo' in text:
-        await query.answer([InlineQueryResultArticle(str(uuid4()), "Echo back", InputTextMessageContent(query.query))])
-
-    pass
+    image = get_random_image()
+    results = [
+        InlineQueryResultCachedPhoto(
+            str(uuid4()),
+            image.file_id_thumb,
+            "来点好图",
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton("more info", image.sent_message_link),
+                        InlineKeyboardButton(
+                            "original", image.sent_message_link + "?comment=1"
+                        ),
+                    ]
+                ]
+            ),
+        )
+    ]
+    await query.answer(results, cache_time=5)
