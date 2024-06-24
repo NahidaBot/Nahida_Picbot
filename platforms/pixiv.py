@@ -187,7 +187,7 @@ class Pixiv(DefaultPlatform):
         pages = list(range(1, page_count + 1))
         if artwork_result.artwork_param.pages is not None:
             pages = artwork_result.artwork_param.pages
-        is_nsfw: bool = artwork_result.is_NSFW or artwork_meta["xRestrict"]
+        is_nsfw: bool = artwork_result.is_NSFW or artwork_meta["xRestrict"]==1
         if artwork_result.artwork_param.is_NSFW is not None:
             is_nsfw = artwork_result.artwork_param.is_NSFW
         for i in pages:

@@ -18,6 +18,8 @@ MAX_FILE_SIZE = 10 * 1024 * 1024
 """
 转义标题、描述等字符串, 防止与 telegram markdown_v2 或 telegram html 符号冲突
 """
+
+
 def md_esc(markdownv2_str: str) -> str:
     """
     Telegram 的 Markdown 格式, 只有 v2 才支持元素嵌套, 同时需要在正文中对以下字符进行额外的转义。
@@ -111,8 +113,10 @@ def check_cache(pid: str, platform: str) -> Optional[list[Image]]:
     logger.debug(image)
     return image
 
+
 def get_random_image() -> Image:
     return session.query(Image).order_by(func.random()).first()
+
 
 def unmark_deduplication(pid: int | str) -> None:
     """
@@ -130,72 +134,82 @@ def unmark_deduplication(pid: int | str) -> None:
 
 
 def find_url(message: Message) -> list[str]:
-    logger.debug(message.reply_to_message)
-    logger.debug(message.reply_to_message.entities)
-    entities = message.reply_to_message.caption_entities
+    logger.debug(message)
+    logger.debug(message.entities)
+    entities = message.entities if message.entities else message.caption_entities
     urls: list[str] = []
     for entity in entities:
-        if entity.type == "text_link" or entity.type == "url":
+        if entity.type == "text_link":
+            logger.debug("\n-----\nfound text_link\n-----\n")
+            logger.debug(msg=entity)
             urls.append(entity.url)
+        if entity.type == "url":
+            logger.debug("\n-----\nfound url\n-----\n")
+            logger.debug(msg=entity)
+            urls.append(message.text[entity.offset : entity.offset + entity.length])
     return urls
+
 
 def parse_page_ranges(page_ranges: str) -> list[int]:
     pages: set[int] = set()
-    ranges = page_ranges.split(',')
-    
+    ranges = page_ranges.split(",")
+
     for r in ranges:
-        if '-' in r:
-            start, end = map(int, r.split('-'))
+        if "-" in r:
+            start, end = map(int, r.split("-"))
             pages.update(range(start, end + 1))
         else:
             pages.add(int(r))
-    
+
     return sorted(pages)
+
 
 def prase_params(words: list[str]) -> ArtworkParam:
     # TODO
     params = ArtworkParam()
     for word in words:
-        if '#' in word:
+        if "#" in word:
             params.input_tags.append(word)
-        elif '=' in word:
-            key, value = word.split('=')
-            if 'p' in key:
+        elif "=" in word:
+            key, value = word.split("=")
+            if "p" in key:
                 # pages
                 params.pages = parse_page_ranges(value)
-            elif 'tag' in key:
-                params.input_tags += value.split(',')
-            elif 'f' in key or 'v' in key:
+            elif "tag" in key:
+                value = value.replace("，", ",")
+                params.input_tags += value.split(",")
+            elif "f" in key or "v" in key:
                 # from / via
-                word = word.split('=')[-1]
-                if 't.me' in value:
+                word = word.split("=")[-1]
+                if "t.me" in value:
                     params.source_from_channel = word
-                elif '@' in value:
+                elif "@" in value:
                     params.source_from_username = word
-                elif value.isdigit():
-                    params.source_from_userid = word
+                # elif value.isdigit():
+                #     params.source_from_userid = word
             # elif 'upscale' in key:
             #     params.upscale = int(value)
-            elif 'silent' in key or 's=' in word:
-                params.silent = 't' in value.lower()
-            elif 'spoiler' in key or 's=' in word:
-                params.silent = 't' in value.lower()
-            elif 'nsfw' in key.lower():
-                params.is_NSFW = 't' in value.lower()
-            elif 'sfw' in key.lower():
-                params.is_NSFW = 'f' in value.lower()
-        elif 'silent' in word:
+            elif "silent" in key or "s=" in word:
+                params.silent = "t" in value.lower()
+            elif "spoiler" in key or "s=" in word:
+                params.silent = "t" in value.lower()
+            elif "nsfw" in key.lower():
+                params.is_NSFW = "t" in value.lower()
+            elif "sfw" in key.lower():
+                params.is_NSFW = "f" in value.lower()
+        elif "silent" in word:
             params.silent = True
-        elif 'spoiler' in word:
+        elif "spoiler" in word:
             params.spoiler = True
-        elif 'nsfw' in word.lower():
+        elif "nsfw" in word.lower():
             params.is_NSFW = True
-        elif 'sfw' in word.lower():
+        elif "sfw" in word.lower():
             params.is_NSFW = False
     return params
 
+
 def get_source_str(artwork_param: ArtworkParam) -> Optional[str]:
-    s = ''
+    s = ""
     if artwork_param.source_from_channel:
         reg = re.compile(
             r"^(?:https?:\/\/)?(?:www\.)?t.me\/([A-Za-z0-9_]+)\/?(?:\d+)?\/?$"
@@ -207,6 +221,5 @@ def get_source_str(artwork_param: ArtworkParam) -> Optional[str]:
             return s
         s = f'from <a href="{artwork_param.source_from_channel}">@{channel_name}</a> '
     if artwork_param.source_from_username:
-        s += f'via {artwork_param.source_from_username}'
+        s += f"via {artwork_param.source_from_username}"
     return s
-    

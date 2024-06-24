@@ -8,6 +8,7 @@ from telegram.ext import (
     CommandHandler,
     MessageHandler,
     filters,
+    InlineQueryHandler,
 )
 from config import config
 from commands import *
@@ -47,25 +48,39 @@ def main() -> None:
     # Create the Application and pass it your bot's token.
 
     # on different commands - answer in Telegram
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("ping", start))
-    application.add_handler(CommandHandler("random", random))
-    application.add_handler(CommandHandler("help", help_command))
-    application.add_handler(CommandHandler("post", post))
-    application.add_handler(CommandHandler("echo", echo))
+    application.add_handler(CommandHandler("start", start, block=False))
+    application.add_handler(CommandHandler("ping", start, block=False))
+    application.add_handler(CommandHandler("random", random, block=False))
+    application.add_handler(CommandHandler("help", help_command, block=False))
+    application.add_handler(CommandHandler("post", post, block=False))
+    application.add_handler(CommandHandler("echo", echo, block=False))
     # application.add_handler(CommandHandler("mark_dup", mark))
     # application.add_handler(CommandHandler("unmark_dup", unmark))
-    application.add_handler(CommandHandler("set_commands", set_commands))
-    application.add_handler(CommandHandler("repost_orig", repost_orig))
+    # application.add_handler(CommandHandler("repost_orig", repost_orig))
+    application.add_handler(CommandHandler("set_commands", set_commands, block=False))
     application.add_handler(CommandHandler("update", update))
     application.add_handler(CommandHandler("get_admins", get_admins))
     application.add_handler(
         MessageHandler(
-            filters.FORWARDED & filters.PHOTO & filters.User(777000),
+            filters.FORWARDED
+            & filters.PHOTO
+            # & filters.ChatType.GROUPS
+            & filters.User(777000),
             get_channel_post,
+            block=False,
         )
     )
     application.add_handler(CommandHandler("restart", restart))
+    application.add_handler(
+        MessageHandler(
+            filters.TEXT
+            # & filters.ChatType.PRIVATE
+            & (filters.Entity("url") | filters.Entity("text_link")),
+            callback=handle_private_share,
+            block=False,
+        )
+    )
+    application.add_handler(InlineQueryHandler(handle_inline_query,block=False))
 
     # Run the bot until the user presses Ctrl-C
     application.run_polling(allowed_updates=Update.ALL_TYPES)

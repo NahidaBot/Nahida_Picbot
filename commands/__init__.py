@@ -13,6 +13,8 @@ import telegram
 from telegram import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
+    InlineQueryResultArticle,
+    InputTextMessageContent,
     Update,
     BotCommand,
     Message,
@@ -24,6 +26,8 @@ from telegram.ext import (
     ContextTypes,
 )
 from telegram.constants import ParseMode
+from uuid import uuid4
+
 from config import config
 from db import session
 from entities import *
@@ -99,7 +103,6 @@ async def start(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
 async def help_command(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
     assert isinstance(update.message, Message)
     await update.message.reply_text(config.txt_help, parse_mode=ParseMode.HTML)
-
 
 @admin
 async def post(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -197,7 +200,7 @@ async def get_artworks(
             )
             # artwork_result.feedback = "没有检测到支持的 URL 喵！主人是不是打错了喵！"
         if hint_msg:
-            artwork_result.hint_msg = hint_msg  # type: ignore
+            artwork_result.hint_msg = hint_msg
 
     return artwork_result
 
@@ -275,7 +278,7 @@ async def send_media_group(
 
         media_group = media_group[batch_size:]
         # 防止 API 速率限制
-        await asyncio.sleep(3 * batch_size)
+        # await asyncio.sleep(3 * batch_size)
 
     if (chat_id == config.bot_channel) or (
         chat_id == config.bot_enable_ai_redirect_channel
@@ -344,7 +347,7 @@ async def post_original_pic(
             img.file_id_original = reply_msgs[j].document.file_id
         images = images[batch_size:]
         # 防止 API 速率限制
-        await asyncio.sleep(3 * batch_size)
+        # await asyncio.sleep(3 * batch_size)
     session.commit()
 
 
@@ -407,38 +410,38 @@ async def set_commands(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 #         await message.reply_text("呜呜，出错了喵！服务器熟了！")
 
 
-@admin
-async def repost_orig(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    msg = update.message
-    assert isinstance(msg, Message)
-    try:
-        urls = find_url(msg)
-        if len(urls) == 0:
-            await msg.reply_text("笨蛋喵！消息里没有 url 喵！")
-            raise AttributeError
+# @admin
+# async def repost_orig(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+#     msg = update.message
+#     assert isinstance(msg, Message)
+#     try:
+#         urls = find_url(msg.reply_to_message)
+#         if len(urls) == 0:
+#             await msg.reply_text("笨蛋喵！消息里没有 url 喵！")
+#             raise AttributeError
 
-        pid = urls[0].strip("/").split("/")[-1]
-        images = (
-            session.query(Image)
-            .filter_by(pid=pid, post_by_guest=False)
-            .order_by(Image.page)
-            .all()
-        )
+#         pid = urls[0].strip("/").split("/")[-1]
+#         images = (
+#             session.query(Image)
+#             .filter_by(pid=pid, post_by_guest=False)
+#             .order_by(Image.page)
+#             .all()
+#         )
 
-        await msg.reply_chat_action("upload_document")
-        media_group: list[InputMediaDocument] = []
-        for image in images:
-            file_path = f"{DOWNLOADS}/{image.platform}/{image.filename}"
-            with open(file_path, "rb") as f:
-                media_group.append(InputMediaDocument(f))
-        assert isinstance(msg.reply_to_message, Message)
-        await msg.reply_to_message.reply_media_group(
-            media_group, write_timeout=60, read_timeout=20
-        )
-        await msg.delete(read_timeout=20)
+#         await msg.reply_chat_action("upload_document")
+#         media_group: list[InputMediaDocument] = []
+#         for image in images:
+#             file_path = f"{DOWNLOADS}/{image.platform}/{image.filename}"
+#             with open(file_path, "rb") as f:
+#                 media_group.append(InputMediaDocument(f))
+#         assert isinstance(msg.reply_to_message, Message)
+#         await msg.reply_to_message.reply_media_group(
+#             media_group, write_timeout=60, read_timeout=20
+#         )
+#         await msg.delete(read_timeout=20)
 
-    except Exception:
-        await msg.reply_text("呜呜，获取失败了喵，检查下是不是在原图评论区发的喵！")
+#     except Exception:
+#         await msg.reply_text("呜呜，获取失败了喵，检查下是不是在原图评论区发的喵！")
 
 
 @admin
@@ -539,3 +542,33 @@ async def update(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await update.message.reply_text("呜呜，更新失败了喵，请主人看下日志吧")
         return
     await restart(update, context, "更新成功了喵！")
+
+
+async def handle_private_share(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    assert update.message
+    assert update.message.from_user
+    if not is_admin(update.message.from_user, context):
+        return
+    urls = find_url(update.message)
+    if not urls:
+        return
+    await update.message.reply_text("检测到url: ", reply_markup=InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton("发到频道", switch_inline_query_current_chat=f'/post {urls[0]} tag='),
+                InlineKeyboardButton("返回预览图", switch_inline_query_current_chat=f'/echo {urls[0]}'),
+                InlineKeyboardButton("debug", switch_inline_query_current_chat=f'{urls}'),
+            ]
+        ]
+    ))
+
+async def handle_inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    assert update.inline_query
+    query = update.inline_query
+    text = query.query
+    if '/post' in text:
+        await query.answer([InlineQueryResultArticle(str(uuid4()), "Post in channel", InputTextMessageContent(query.query))])
+    if '/echo' in text:
+        await query.answer([InlineQueryResultArticle(str(uuid4()), "Echo back", InputTextMessageContent(query.query))])
+
+    pass

@@ -86,7 +86,7 @@ class DefaultPlatform:
         artwork_meta: dict[str, Any], 
         artwork_result: ArtworkResult
     ) -> list[Image]:
-        pid: str = artwork_meta["id"]
+        pid: str = artwork_meta.get("id") or artwork_meta.get("gallery_id") or artwork_meta.get("media_id")
         if existing_images := cls.check_cache(pid, post_mode, user):
             artwork_result.cached = True
             return existing_images
@@ -97,6 +97,7 @@ class DefaultPlatform:
         is_nsfw: bool = artwork_result.is_NSFW
         if artwork_result.artwork_param.is_NSFW is not None:
             is_nsfw = artwork_result.artwork_param.is_NSFW
+        author = str(artwork_meta.get("author") or artwork_meta.get("artist") or artwork_meta.get("tags_artist"))
         for i in pages:
             image = artwork_info[i]
             if image[0] == 3:
@@ -109,7 +110,7 @@ class DefaultPlatform:
                     pid=pid,
                     title=artwork_meta.get("title") or artwork_meta.get("tweet_content") or artwork_meta.get("id"),
                     page=i,
-                    author=artwork_meta.get("author"),
+                    author=author,
                     authorid=(
                         artwork_meta.get("pixiv_id")
                         or artwork_meta.get("uploader_id") 
